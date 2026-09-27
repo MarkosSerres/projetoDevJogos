@@ -1,0 +1,33 @@
+# Documentation — Vector2D.cpp Implementation
+
+## Normalization Implementation 
+
+A vector with a length of 1 is called “normalized”. We divide each component by the vector’s length. The method operates in read-only mode. Since C++ does not throw exceptions for arithmetic operations on floating-point types, the @pre length() > EPSILON directive specifies that the responsibility for ensuring the vector is not null before the call lies with the code that invokes the method. 
+
+In the normalize method (void Vector2D::normalize()), we do the same thing but modify the object’s value instead of returning a new vector
+
+## equals Implementation
+
+It performs the spatial subtraction first and then extracts the absolute value of the result. It checks the absolute distance between the coordinates on each axis individually by comparing it directly with the specified tolerance. The use of the logical operator `&&` ensures that the comparison is skipped if the difference on the X-axis already exceeds the limit. The limit is the default argument = EPSILON inserted directly into the contract, which instructs the compiler to automatically inject the value of the constant EPSILON if the function is called without passing the second parameter. This value is a hardware-defined constant (IEEE 754 standard). For 32-bit floats, this value is approximately 1.19209e-07 and ensures a solution to the problem: Floating-Point Precision
+
+## Operator Overloading
+
+The addition operator performs algebraic vector addition. The routine adds the X-coordinate of the current vector to the X-coordinate of the target vector, and performs the same operation independently for the Y-axis. Geometrically, it calculates the displacement resulting from the combination of the two directions and magnitudes in two-dimensional space, equivalent to applying the movement of one vector and, starting from its endpoint, applying the movement of the second vector.
+
+The subtraction operator performs the algebraic difference of the coordinates independently and returns a new instance for each value. The structure preserves the immutability of the original vector and ensures that no exceptions are thrown.
+
+The multiplication operator applies scalar scaling to each axis, instantiating the result separately and maintaining the integrity of memory and exception policies.
+
+The division operator performs the algebraic division and validates the precondition stipulated in the contract. The contract defines the directive @pre std::abs(scalar) > EPSILON. This requires the injection of an assertion to validate this rule at debug time, preventing division by zero (or a value close to zero).
+
+The assignment-with-addition operator performs the algebraic vector sum by applying the result directly to the coordinates of the current instance. The internal state of the vector is mutated by incorporating the spatial values of the target vector.
+
+The subtraction assignment operator processes the geometric difference by subtracting the coordinates of the target vector from those of the current vector and applying the structural mutation to the object itself.
+
+The multiplication assignment operator applies a scale to the coordinates of the current vector, altering its magnitude directly at the original memory location.
+
+The difference between these last three operations and conventional operators (+, -, *) lies in data mutation. Instead of allocating and returning a new instance by value, these routines modify the x and y attributes of the vector that invokes the operation and must return a reference to the object itself.
+
+The last global-scope declaration is left-scalar multiplication, which delegates the operation directly to the `operator*` method that has been implemented internally in the `Vector2D` class.
+
+Translated with DeepL.com (free version)
