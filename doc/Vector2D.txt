@@ -29,5 +29,3 @@ The multiplication assignment operator applies a scale to the coordinates of the
 The difference between these last three operations and conventional operators (+, -, *) lies in data mutation. Instead of allocating and returning a new instance by value, these routines modify the x and y attributes of the vector that invokes the operation and must return a reference to the object itself.
 
 The last global-scope declaration is left-scalar multiplication, which delegates the operation directly to the `operator*` method that has been implemented internally in the `Vector2D` class.
-
-Translated with DeepL.com (free version)
