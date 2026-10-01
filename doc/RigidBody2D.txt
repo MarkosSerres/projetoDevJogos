@@ -1,0 +1,4 @@
+In the method integrate:
+- assertion make sure that dt is not less than zero;
+- the overloading of the += operator in the vector class handles this operation;
+- the velocity must be updated before position update.
