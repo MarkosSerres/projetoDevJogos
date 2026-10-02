@@ -1,0 +1,26 @@
+# Documentation — Transform2D.cpp Implementation
+
+## Overview
+The Transform2D class encapsulates an entity's 2D spatial transformation (position, rotation, and scale) in continuous world space, adhering to the project's coordinate convention where the Y-axis grows downward and rotation is expressed in radians (clockwise).
+
+## Translation and Rotation Implementation
+- In the `translate(const Vector2D& offset)` method, in-place displacement is applied to the position vector using the overloaded `Vector2D::operator+=`;
+- The `translate(float dx, float dy)` overload mutates the x and y coordinates directly without instantiating temporary objects;
+- The `rotate(float angle)` method increments the rotation angle by `angle` radians in place.
+
+## Scale Implementation
+- In `scaleBy(float factor)`, uniform scaling is applied to the scale vector via `Vector2D::operator*=`;
+- In `scaleBy(const Vector2D& factors)`, non-uniform scaling modifies individual axes independently directly at their memory locations.
+
+## Coordinate Transformations (Local vs. World Space)
+- In `transformPoint(const Vector2D& localPoint)`, local entity coordinates are transformed to world coordinates. The transformation pipeline strictly applies non-uniform scaling first, followed by 2D planar rotation through trigonometric sine and cosine calculations, and finally spatial translation by adding the entity's position vector;
+- In `inverseTransformPoint(const Vector2D& worldPoint)`, world coordinates are mapped back into local entity space. The method applies reverse translation, followed by reverse rotation (by `-rotation`), and validates that scale components are non-zero using assertions (`@pre std::abs(scale) > EPSILON`) to prevent division by zero before dividing by scale factors;
+- In `transformDirection(const Vector2D& localDirection)`, rotation is applied to direction vectors without spatial translation, maintaining direction fidelity in world space.
+
+## Direction Vectors (forward and right)
+- The `forward()` method returns a unit vector corresponding to the current orientation heading: `Vector2D(cos(rotation), sin(rotation))`;
+- The `right()` method calculates the perpendicular normal vector in the clockwise direction conforming to the screen convention where Y increases downward: `Vector2D(-sin(rotation), cos(rotation))`.
+
+## Equality Comparison
+- The `equals(const Transform2D& rhs, float tolerance)` method checks whether two transforms match within a numeric tolerance (defaulting to `EPSILON`);
+- It delegates vector equality to `Vector2D::equals` for `position` and `scale`, and evaluates rotation using `std::abs(rotation - rhs.rotation) <= tolerance`.

@@ -1,0 +1,18 @@
+# Documentation — Collision2D.cpp Implementation
+
+## AABB::intersects Implementation
+
+The `intersects` method performs a narrow-phase collision check between two axis-aligned bounding boxes (AABBs) using the Separating Axis Theorem (SAT) adapted for two dimensions:
+- Assertions in debug mode guarantee the class invariants (`min.x <= max.x` and `min.y <= max.y`) for both instances;
+- The algorithm tests overlap independently along the X-axis and Y-axis;
+- Comparisons use inclusive operators (`<=` and `>=`) to ensure that touching edges or collinear boundaries count as overlapping, strictly abiding by the contract requirement;
+- Short-circuit evaluation (`&&`) ensures that if the boxes are separated on the X-axis, the check for the Y-axis is immediately bypassed for performance;
+- Returns `true` if and only if both projections overlap.
+
+## Collision2D::bounds Implementation
+
+The `bounds` method constructs the world-space axis-aligned bounding box of an entity centered at a given world position:
+- An assertion validates that the half-extents are non-negative dimensions (`halfExtents.x >= 0.0f` and `halfExtents.y >= 0.0f`);
+- The minimum boundary point `min` (top-left corner, adhering to the convention where the Y-axis grows downward) is calculated via vector subtraction (`position - halfExtents`), utilizing the overloaded `Vector2D::operator-`;
+- The maximum boundary point `max` (bottom-right corner) is calculated via vector addition (`position + halfExtents`), utilizing the overloaded `Vector2D::operator+`;
+- Returns a new `AABB` struct instance holding the calculated `min` and `max` vectors.
