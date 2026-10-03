@@ -1,3 +1,5 @@
+# Documentation — RigidBody.cpp Implementation
+
 In the method integrate:
 - assertion make sure that dt is not less than zero;
 - the overloading of the += operator in the vector class handles this operation;
