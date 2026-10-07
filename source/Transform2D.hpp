@@ -1,97 +1,65 @@
 #ifndef GAME_TRANSFORM2D_HPP
 #define GAME_TRANSFORM2D_HPP
 
-#include <cmath>
-#include "Global.hpp"
 #include "Vector2D.hpp"
 
 /**
  * @file Transform2D.hpp
- * @brief 2D spatial transformation component (position, rotation, and scale).
+ * @brief 3x3 affine transform for 2D points and directions.
  *
- * Represents an entity's 2D affine transformation state in continuous world space.
- * Follows the project coordinate convention where the Y axis grows DOWNWARD (screen convention).
- * Rotation is defined in radians, where positive values denote clockwise rotation.
+ * ---------------------------------------------------------------------------
+ * MATRIX CONVENTION (DirectX-style). A correct implementation requires:
+ *   1. Storage is ROW-MAJOR: m[row][col].
+ *   2. Vectors are ROW vectors.
+ *   3. A point is [x, y, 1]; a direction is [x, y, 0].
+ *   4. TRANSLATION lives in the THIRD ROW: m[2][0] = tx, m[2][1] = ty.
+ *   5. The third column is [0, 0, 1]^T for the affine transforms here.
+ *
+ * Rotation by angle a (positive = counter-clockwise):
+ *      m[0][0] =  cos(a)   m[0][1] = sin(a)
+ *      m[1][0] = -sin(a)   m[1][1] = cos(a)
+ *
+ * COMPOSITION ORDER: because v * (A * B) == (v * A) * B, the product A * B is
+ * the transform that applies A FIRST, then B. Composed transforms read LEFT TO
+ * RIGHT (the opposite of the column-vector M*v convention).
+ *
+ * @invariant Every entry is finite; the third column is [0, 0, 1]^T.
  */
-struct Transform2D {
-    Vector2D position{0.0f, 0.0f};  ///< World position, in pixels.
-    float rotation{0.0f};           ///< Rotation angle, in radians (clockwise, Y-down).
-    Vector2D scale{1.0f, 1.0f};     ///< Non-uniform scale factors along X and Y axes.
+class Transform2D {
+public:
+    /// Row-major storage, m[row][col]. Defaults to the identity.
+    float m[3][3]{
+        {1.0f, 0.0f, 0.0f},
+        {0.0f, 1.0f, 0.0f},
+        {0.0f, 0.0f, 1.0f}
+    };
 
-    constexpr Transform2D() noexcept = default;
-    constexpr Transform2D(const Vector2D& in_position, float in_rotation = 0.0f, const Vector2D& in_scale = Vector2D{1.0f, 1.0f}) noexcept
-        : position(in_position), rotation(in_rotation), scale(in_scale) {}
-    constexpr Transform2D(float in_x, float in_y, float in_rotation = 0.0f, float in_scale_x = 1.0f, float in_scale_y = 1.0f) noexcept
-        : position(in_x, in_y), rotation(in_rotation), scale(in_scale_x, in_scale_y) {}
+    /// Constructs the identity transform.
+    Transform2D() noexcept = default;
 
-    // --- Transformations ---------------------------------------------------
-
-    /**
-     * @brief Translates the position by a displacement vector.
-     * @param offset Displacement in pixels.
-     */
-    void translate(const Vector2D& offset) noexcept;
+    // --- Factories ---------------------------------------------------------
+    [[nodiscard]] static Transform2D translation(float tx, float ty) noexcept;   
+    [[nodiscard]] static Transform2D rotation(float angle_rad) noexcept;
+    [[nodiscard]] static Transform2D scale(float sx, float sy) noexcept;
 
     /**
-     * @brief Translates the position by discrete x and y offsets.
+     * @brief Matrix product.
+     * @return The transform equivalent to applying *this FIRST, then rhs.
      */
-    void translate(float dx, float dy) noexcept;
+    [[nodiscard]] Transform2D operator*(const Transform2D& rhs) const noexcept;
+    Transform2D& operator*=(const Transform2D& rhs) noexcept;
 
     /**
-     * @brief Increments the rotation angle.
-     * @param angle Angle to add, in radians.
+     * @brief Transforms a POINT (w = 1): translation IS applied.
+     * @return [p.x, p.y, 1] * M.
      */
-    void rotate(float angle) noexcept;
+    [[nodiscard]] Vector2D transform_point(const Vector2D& point) const noexcept;
 
     /**
-     * @brief Scales the current scale factors uniformly.
-     * @param factor Scalar multiplier.
+     * @brief Transforms a DIRECTION (w = 0): translation is NOT applied.
+     * @return [d.x, d.y, 0] * M (third row ignored).
      */
-    void scaleBy(float factor) noexcept;
-
-    /**
-     * @brief Scales the current scale factors non-uniformly.
-     * @param factors Scale multipliers along X and Y.
-     */
-    void scaleBy(const Vector2D& factors) noexcept;
-
-    // --- Coordinate conversions --------------------------------------------
-
-    /**
-     * @brief Transforms a point from local space to world space.
-     * Applies scaling, followed by rotation, then translation.
-     * @param localPoint Point in entity's local coordinates.
-     * @return World coordinates of the transformed point.
-     */
-    [[nodiscard]] Vector2D transformPoint(const Vector2D& localPoint) const noexcept;
-
-    /**
-     * @brief Transforms a point from world space back to local space.
-     * @param worldPoint Point in world coordinates.
-     * @pre std::abs(scale.x) > EPSILON && std::abs(scale.y) > EPSILON.
-     * @return Local coordinates of the point.
-     */
-    [[nodiscard]] Vector2D inverseTransformPoint(const Vector2D& worldPoint) const;
-
-    /**
-     * @brief Transforms a direction vector from local space to world space (without translation).
-     * @param localDirection Direction in local coordinates.
-     * @return Transformed direction in world coordinates.
-     */
-    [[nodiscard]] Vector2D transformDirection(const Vector2D& localDirection) const noexcept;
-
-    // --- Direction vectors -------------------------------------------------
-
-    /// Unit direction vector pointing along the entity's forward heading (local (1, 0)).
-    [[nodiscard]] Vector2D forward() const noexcept;
-
-    /// Unit direction vector pointing to the entity's right (local (0, 1) in Y-down convention).
-    [[nodiscard]] Vector2D right() const noexcept;
-
-    // --- Comparison --------------------------------------------------------
-
-    /// Approximate equality within a tolerance.
-    [[nodiscard]] bool equals(const Transform2D& rhs, float tolerance = EPSILON) const noexcept;
+    [[nodiscard]] Vector2D transform_vector(const Vector2D& direction) const noexcept;
 };
 
 #endif // GAME_TRANSFORM2D_HPP

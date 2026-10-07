@@ -1,26 +1,22 @@
 # Documentation — Transform2D.cpp Implementation
 
 ## Overview
-The Transform2D class encapsulates an entity's 2D spatial transformation (position, rotation, and scale) in continuous world space, adhering to the project's coordinate convention where the Y-axis grows downward and rotation is expressed in radians (clockwise).
+The `Transform2D` class implements a 3x3 affine transformation matrix for 2D points and directions following DirectX-style conventions:
+- Row-major storage: `m[row][col]`;
+- Row vectors: points are represented as [x, y, 1] and directions as [x, y, 0];
+- Translation is stored in the third row: `m[2][0] = tx`, `m[2][1] = ty`;
+- The third column is [0, 0, 1]^T for 2D affine transforms;
+- Transform composition order reads left to right: v * (A * B) == (v * A) * B, applying transform A first, then B.
 
-## Translation and Rotation Implementation
-- In the `translate(const Vector2D& offset)` method, in-place displacement is applied to the position vector using the overloaded `Vector2D::operator+=`;
-- The `translate(float dx, float dy)` overload mutates the x and y coordinates directly without instantiating temporary objects;
-- The `rotate(float angle)` method increments the rotation angle by `angle` radians in place.
+## Factories Implementation
+- `translation(float tx, float ty)`: returns an identity matrix with translation offsets assigned to `m[2][0]` and `m[2][1]`;
+- `rotation(float angle_rad)`: returns a matrix configured with counter-clockwise rotation (m[0][0] = cos(a), m[0][1] = sin(a), m[1][0] = -sin(a), m[1][1] = cos(a));
+- `scale(float sx, float sy)`: returns a diagonal scaling matrix with m[0][0] = sx and m[1][1] = sy.
 
-## Scale Implementation
-- In `scaleBy(float factor)`, uniform scaling is applied to the scale vector via `Vector2D::operator*=`;
-- In `scaleBy(const Vector2D& factors)`, non-uniform scaling modifies individual axes independently directly at their memory locations.
+## Matrix Multiplication and Composition
+- `operator*(const Transform2D& rhs)`: calculates the matrix product `*this * rhs`, maintaining row-major transformation concatenation;
+- `operator*=(const Transform2D& rhs)`: assigns the resulting matrix multiplication product in place.
 
-## Coordinate Transformations (Local vs. World Space)
-- In `transformPoint(const Vector2D& localPoint)`, local entity coordinates are transformed to world coordinates. The transformation pipeline strictly applies non-uniform scaling first, followed by 2D planar rotation through trigonometric sine and cosine calculations, and finally spatial translation by adding the entity's position vector;
-- In `inverseTransformPoint(const Vector2D& worldPoint)`, world coordinates are mapped back into local entity space. The method applies reverse translation, followed by reverse rotation (by `-rotation`), and validates that scale components are non-zero using assertions (`@pre std::abs(scale) > EPSILON`) to prevent division by zero before dividing by scale factors;
-- In `transformDirection(const Vector2D& localDirection)`, rotation is applied to direction vectors without spatial translation, maintaining direction fidelity in world space.
-
-## Direction Vectors (forward and right)
-- The `forward()` method returns a unit vector corresponding to the current orientation heading: `Vector2D(cos(rotation), sin(rotation))`;
-- The `right()` method calculates the perpendicular normal vector in the clockwise direction conforming to the screen convention where Y increases downward: `Vector2D(-sin(rotation), cos(rotation))`.
-
-## Equality Comparison
-- The `equals(const Transform2D& rhs, float tolerance)` method checks whether two transforms match within a numeric tolerance (defaulting to `EPSILON`);
-- It delegates vector equality to `Vector2D::equals` for `position` and `scale`, and evaluates rotation using `std::abs(rotation - rhs.rotation) <= tolerance`.
+## Coordinate Transformations
+- `transform_point(const Vector2D& point)`: computes [p.x, p.y, 1] * M, applying both linear transformation and spatial translation;
+- `transform_vector(const Vector2D& direction)`: computes [d.x, d.y, 0] * M, ignoring translation (third row) to transform direction only.

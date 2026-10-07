@@ -1,76 +1,59 @@
 #include "Transform2D.hpp"
-#include <cassert>
 #include <cmath>
 
-void Transform2D::translate(const Vector2D& offset) noexcept{
-    position += offset;
+Transform2D Transform2D::translation(float tx, float ty) noexcept {
+    Transform2D result;
+    result.m[2][0] = tx;
+    result.m[2][1] = ty;
+    return result;
 }
 
-void Transform2D::translate(float dx, float dy) noexcept{
-    position.x += dx;
-    position.y += dy;
+Transform2D Transform2D::rotation(float angle_rad) noexcept {
+    Transform2D result;
+    const float cos_a = std::cos(angle_rad);
+    const float sin_a = std::sin(angle_rad);
+
+    result.m[0][0] = cos_a;
+    result.m[0][1] = sin_a;
+    result.m[1][0] = -sin_a;
+    result.m[1][1] = cos_a;
+    return result;
 }
 
-void Transform2D::rotate(float angle) noexcept{
-    rotation += angle;
+Transform2D Transform2D::scale(float sx, float sy) noexcept {
+    Transform2D result;
+    result.m[0][0] = sx;
+    result.m[1][1] = sy;
+    return result;
 }
 
-void Transform2D::scaleBy(float factor) noexcept{
-    scale *= factor;
+Transform2D Transform2D::operator*(const Transform2D& rhs) const noexcept {
+    Transform2D result;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            result.m[i][j] = m[i][0] * rhs.m[0][j]
+                           + m[i][1] * rhs.m[1][j]
+                           + m[i][2] * rhs.m[2][j];
+        }
+    }
+    return result;
 }
 
-void Transform2D::scaleBy(const Vector2D& factors) noexcept{
-    scale.x *= factors.x;
-    scale.y *= factors.y;
+Transform2D& Transform2D::operator*=(const Transform2D& rhs) noexcept {
+    *this = *this * rhs;
+    return *this;
 }
 
-[[nodiscard]] Vector2D Transform2D::transformPoint(const Vector2D& localPoint) const noexcept{
-    float sx = localPoint.x * scale.x;
-    float sy = localPoint.y * scale.y;
-
-    float cosR = std::cos(rotation);
-    float sinR = std::sin(rotation);
-
-    float rx = sx * cosR - sy * sinR;
-    float ry = sx * sinR + sy * cosR;
-
-    return Vector2D(position.x + rx, position.y + ry);
+Vector2D Transform2D::transform_point(const Vector2D& point) const noexcept {
+    return Vector2D(
+        point.x * m[0][0] + point.y * m[1][0] + m[2][0],
+        point.x * m[0][1] + point.y * m[1][1] + m[2][1]
+    );
 }
 
-[[nodiscard]] Vector2D Transform2D::inverseTransformPoint(const Vector2D& worldPoint) const{
-    assert(std::abs(scale.x) > EPSILON);
-    assert(std::abs(scale.y) > EPSILON);
-
-    float dx = worldPoint.x - position.x;
-    float dy = worldPoint.y - position.y;
-
-    float cosR = std::cos(rotation);
-    float sinR = std::sin(rotation);
-
-    float rx = dx * cosR + dy * sinR;
-    float ry = -dx * sinR + dy * cosR;
-
-    return Vector2D(rx / scale.x, ry / scale.y);
-}
-
-[[nodiscard]] Vector2D Transform2D::transformDirection(const Vector2D& localDirection) const noexcept{
-    float cosR = std::cos(rotation);
-    float sinR = std::sin(rotation);
-
-    return Vector2D(localDirection.x * cosR - localDirection.y * sinR,
-                    localDirection.x * sinR + localDirection.y * cosR);
-}
-
-[[nodiscard]] Vector2D Transform2D::forward() const noexcept{
-    return Vector2D(std::cos(rotation), std::sin(rotation));
-}
-
-[[nodiscard]] Vector2D Transform2D::right() const noexcept{
-    return Vector2D(-std::sin(rotation), std::cos(rotation));
-}
-
-[[nodiscard]] bool Transform2D::equals(const Transform2D& rhs, float tolerance) const noexcept{
-    return position.equals(rhs.position, tolerance) &&
-           std::abs(rotation - rhs.rotation) <= tolerance &&
-           scale.equals(rhs.scale, tolerance);
+Vector2D Transform2D::transform_vector(const Vector2D& direction) const noexcept {
+    return Vector2D(
+        direction.x * m[0][0] + direction.y * m[1][0],
+        direction.x * m[0][1] + direction.y * m[1][1]
+    );
 }
