@@ -1,0 +1,61 @@
+# Documentation — TileMap.cpp Implementation
+
+## Overview
+
+The `TileMap` class manages the discrete two-dimensional tile matrix of the game world:
+- Internal storage: 1D linear buffer (`std::vector<int> m_cells`) stored in ROW-MAJOR order (`index = row * width + col`);
+- Cell values represent tile states: `EMPTY_TILE` (0) for walkable terrain and `WALL_TILE` (1) for blocking obstacles, adhering to `Global.hpp`;
+- Serves as the spatial authority converting continuous world coordinates (pixels) to discrete grid indices, and serializing/deserializing map layouts via CSV files.
+
+## loadFromDungeon Implementation
+
+The `loadFromDungeon` method rasterizes the procedural geometric layout produced by a `Dungeon2D` instance:
+- Resizes the matrix to match the dimensions of the dungeon (`dungeon.width` x `dungeon.height`) and initializes every cell to `WALL_TILE`;
+- Traverses the dungeon's Binary Space Partitioning (BSP) tree recursively through the helper routine `carveRoomsFromLeaves`:
+  - For each leaf node (`node->isLeaf()`), reads the `room` rectangle (`[left, right)` and `[top, bottom)`) bounded to grid limits, carving `EMPTY_TILE` cells;
+- Iterates over the `dungeon.corridors` collection:
+  - Rasterizes the horizontal and vertical connecting rectangular strips (`[minCol, maxCol]` and `[minRow, maxRow]`) ensuring corridors maintain their designated 3-tile width and bridge all generated rooms into a single connected traversable component.
+
+## CSV Persistence (saveCSV and loadCSV)
+
+### saveCSV
+- Serializes the grid state row-by-row into a plain-text CSV file;
+- Cell values in each row are separated by a single comma, with no trailing comma at the end of the line;
+- Rows are written in row-major order (row 0 to row `m_height - 1`), each ending with a newline character (`\n`);
+- Validates file stream integrity and returns `true` on successful completion, or `false` on file I/O failure.
+
+### loadCSV
+- Implements the Strong Exception Safety Guarantee (atomic update): reads and validates the CSV content completely into temporary variables before modifying the object's internal state;
+- Strips carriage returns (`\r`) to ensure transparent cross-platform compatibility across Windows and POSIX line endings;
+- Enforces strict formatting rules:
+  - Rejects empty lines and trailing commas at the end of rows;
+  - Parses each cell token strictly as an integer using `std::from_chars` (rejecting malformed, empty, or non-numeric entries);
+  - Guarantees uniform matrix dimensions by asserting that every line contains the exact same column count as the first line;
+- If any formatting or I/O error is encountered, the method aborts immediately, returns `false`, and leaves the existing map state completely untouched;
+- Upon complete validation, transfers the temporary buffer into `m_cells`, updates `m_width` and `m_height`, and returns `true`.
+
+## Coordinate Translations
+
+### toIndices
+- Converts a continuous world-space coordinate (`Vector2D world`) to discrete cell indices (`col`, `row`);
+- Computes `col = floor(world.x / TILE_SIZE)` and `row = floor(world.y / TILE_SIZE)` using `std::floor`, properly handling negative floating-point coordinates according to screen convention (Y-down).
+
+### toWorld
+- Computes the continuous world-space coordinates corresponding to the geometric center of a discrete cell:
+  - `x = (col + 0.5f) * TILE_SIZE`
+  - `y = (row + 0.5f) * TILE_SIZE`
+- Returns a `Vector2D` representing the calculated point in pixels.
+
+## Queries and Inspection
+
+- `width()` and `height()`: inline noexcept accessors returning the discrete dimensions of the map;
+- `at(int col, int row)`: retrieves the tile value at the given grid coordinates. Debug assertions enforce that coordinates are within valid bounds (`0 <= col < m_width` and `0 <= row < m_height`);
+- `isWall(int col, int row)`: queries whether a specific cell is solid by validating index bounds and comparing `at(col, row) == WALL_TILE`;
+- `data()`: returns a direct `const int*` pointer to the underlying contiguous row-major vector memory (`m_cells.data()`).
+
+## randomEmptyCell Implementation
+
+- Identifies all walkable cells (`EMPTY_TILE`) currently stored in the map and collects their flat linear indices;
+- Asserts the class contract precondition (`assert(!emptyIndices.empty())`) ensuring that at least one walkable cell exists in the grid;
+- Selects a uniformly random index from the empty pool via `std::rand()`;
+- Deconstructs the linear index into 2D grid coordinates (`col = chosen % m_width`, `row = chosen / m_width`) and assigns them to the output reference parameters.
