@@ -1,0 +1,9 @@
+# Documentation — Dungeon.cpp Implementation
+
+método generate estrutura a topologia da masmorra seguindo uma lógicas baseada no conceito de Particionamento Binário do Espaço.
+
+Primeiro o método utiliza a seed recebida como argumento para alimentar o motor gerador de números pseudo-aleatórios da linguagem. Depois o algoritmo instância o nó root e define a sua região abrangendo a totalidade do espaço. 
+Em seguida, processa um corte na área do nó (aleatoriamente no eixo vertical ou horizontal), gerando dois novos
+nós menores inseridos nos ponteiros left e right. A operação é chamada de forma recursiva nestes novos nós, dividindo a área repetidamente até que os espaços resultantes fiquem demasiado pequenos para novos cortes.   
+Quando um nó para de ser cortado, ele torna-se uma folha na árvore (isLeaf retorna verdadeiro).
+É no interior da região destas folhas que o algoritmo aloca o retângulo de uma sala. O contrato estabelece uma limitação: o cálculo das dimensões aleatórias não pode permitir a criação de aposentos menores do que 5 por 5 tiles. As salas devem estar contidas inteiramente dentro dos limites da região da sua respectiva folha. O contrato exige um único espaço geográfico inteiramente conectado, assegurando que não existam salas inacessíveis. O algoritmo deve retroceder na árvore analisando os nós pais para desenhar um corredor unindo as estruturas que pertencem ao seu nó filho esquerdo com as estruturas que pertencem ao seu nó filho direito. Todo o corredor gerado é instanciado usando o alias Corridor e armazenado na lista corridors. A regra estipulada exige que o retângulo destes corredores tenha rigorosamente 3 tiles de largura.
