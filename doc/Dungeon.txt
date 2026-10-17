@@ -1,12 +1,11 @@
 # Documentation — Dungeon.cpp Implementation
 
-método generate estrutura a topologia da masmorra seguindo uma lógicas baseada no conceito de Particionamento Binário do Espaço.
+The `generate` method structures the dungeon topology based on the concept of Binary Space Partitioning.
 
-Primeiro o método utiliza a seed recebida como argumento para alimentar o motor gerador de números pseudo-aleatórios da linguagem. Depois o algoritmo instância o nó root e define a sua região abrangendo a totalidade do espaço. 
-Em seguida, processa um corte na área do nó (aleatoriamente no eixo vertical ou horizontal), gerando dois novos
-nós menores inseridos nos ponteiros left e right. A operação é chamada de forma recursiva nestes novos nós, dividindo a área repetidamente até que os espaços resultantes fiquem demasiado pequenos para novos cortes.   
-Quando um nó para de ser cortado, ele torna-se uma folha na árvore (isLeaf retorna verdadeiro).
-É no interior da região destas folhas que o algoritmo aloca o retângulo de uma sala. O contrato estabelece uma limitação: o cálculo das dimensões aleatórias não pode permitir a criação de aposentos menores do que 5 por 5 tiles. 
-As salas devem estar contidas inteiramente dentro dos limites da região da sua respectiva folha. O contrato exige um único espaço geográfico inteiramente conectado, assegurando que não existam salas inacessíveis. 
-O algoritmo deve retroceder na árvore analisando os nós pais para desenhar um corredor unindo as estruturas que pertencem ao seu nó filho esquerdo com as estruturas que pertencem ao seu nó filho direito. Todo o corredor gerado é instanciado usando o alias Corridor e armazenado na lista corridors. 
-A regra estipulada exige que o retângulo destes corredores tenha rigorosamente 3 tiles de largura.
+First, the method uses the provided seed as an argument to initialize the language's pseudo-random number generator. The algorithm then instantiates a root node, defining its region to encompass the entire available space.
+Next, it performs a split within the node's area—randomly choosing between a vertical or horizontal axis—which creates two smaller child nodes assigned to the `left` and `right` pointers. This operation is applied recursively to these new nodes, repeatedly subdividing the space until the resulting areas become too small for further partitioning.
+When a node can no longer be split, it becomes a leaf in the tree (where `isLeaf` returns `true`).
+Within the region defined by each leaf, the algorithm allocates a rectangular room. A constraint is imposed: the random dimension calculations must not result in rooms smaller than 5 by 5 tiles.
+Rooms must be contained entirely within the boundaries of their respective leaf's region. The design requirements mandate a single, fully connected geographic space, ensuring that no rooms are left inaccessible.
+The algorithm then traverses back up the tree, analyzing parent nodes to construct corridors that link the structures belonging to the left child node with those belonging to the right child node. Each generated corridor is instantiated as a `Corridor` object and stored in a list called `corridors`.
+A specific rule dictates that these corridors must be exactly 3 tiles wide.
