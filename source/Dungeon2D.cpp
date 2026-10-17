@@ -1,28 +1,36 @@
 #include "Dungeon2D.hpp"
 #include <stdlib.h>
+#include <random>
 
 Dungeon2D::Dungeon2D(int widthTiles, int heightTiles) 
                 : width{widthTiles}, height{heightTiles}, root(nullptr){}
 
 namespace{
     constexpr int MIN_NODE_SIZE = 7;
-    
-    void splitNode(std::unique_ptr<BSPNode>& node)
+
+    using Rng = std::mt19937;
+
+    int randInt(Rng& rng, int lo, int hi) { 
+        return lo + static_cast<int>(rng() % static_cast<unsigned>(hi - lo + 1));
+    }
+
+    void splitNode(std::unique_ptr<BSPNode>& node, Rng& rng)
     {
         int w = node->region.right - node->region.left;
         int h = node->region.bottom - node->region.top;
 
         if(w < MIN_NODE_SIZE * 2 && h < MIN_NODE_SIZE * 2){
             constexpr int MIN_ROOM_SIZE = 5;
+            constexpr int ROOM_MARGIN   = 1;
 
-            int max_w = w - MIN_ROOM_SIZE + 1;
-            int max_h = h - MIN_ROOM_SIZE + 1;
+            const int usableW = w - 2 * ROOM_MARGIN;
+            const int usableH = h - 2 * ROOM_MARGIN;
 
-            int roomW = MIN_ROOM_SIZE + (rand() % max_w);
-            int roomH = MIN_ROOM_SIZE + (rand() % max_h);
+            const int roomW = MIN_ROOM_SIZE + randInt(rng, 0, usableW - MIN_ROOM_SIZE);
+            const int roomH = MIN_ROOM_SIZE + randInt(rng, 0, usableH - MIN_ROOM_SIZE);
 
-            int rx = node->region.left + (rand() % (w - roomW + 1));
-            int ry = node->region.top  + (rand() % (h - roomH + 1));
+            const int rx = node->region.left + ROOM_MARGIN + randInt(rng, 0, usableW - roomW);
+            const int ry = node->region.top  + ROOM_MARGIN + randInt(rng, 0, usableH - roomH);
 
             node->room = Rect{rx, ry, rx + roomW, ry + roomH};
             return;
@@ -34,15 +42,14 @@ namespace{
         }else if(h > w && h >= MIN_NODE_SIZE * 2){
             splitHorizontal = true;
         }else{
-            splitHorizontal = (rand() % 2) == 0;
+            splitHorizontal = (randInt(rng, 0, 1) == 0);
         }
 
         node->left  = std::make_unique<BSPNode>();
         node->right = std::make_unique<BSPNode>();
 
         if(splitHorizontal){
-            int max_split = h - MIN_NODE_SIZE;
-            int    splitY = node->region.top + MIN_NODE_SIZE + (rand() % (max_split - MIN_NODE_SIZE + 1));
+            const int splitY = node->region.top + randInt(rng, MIN_NODE_SIZE, h - MIN_NODE_SIZE);
 
             node->left->region  = Rect{node->region.left,
                                        node->region.top,
@@ -55,8 +62,7 @@ namespace{
                                        node->region.bottom};
         }
         else{
-            int max_split = w - MIN_NODE_SIZE;
-            int    splitX = node->region.left + MIN_NODE_SIZE + (rand() % (max_split - MIN_NODE_SIZE + 1));
+            const int splitX = node->region.left + randInt(rng, MIN_NODE_SIZE, w - MIN_NODE_SIZE);
 
             node->left->region  = Rect{node->region.left, 
                                        node->region.top, 
@@ -69,30 +75,31 @@ namespace{
                                        node->region.bottom};
         }
 
-        splitNode(node->left);
-        splitNode(node->right);
+        splitNode(node->left, rng);
+        splitNode(node->right, rng);
     }
 
-    void getLeafCenter(const std::unique_ptr<BSPNode>& node, int& cx, int& cy){
+    void getLeafCenter(const std::unique_ptr<BSPNode>& node, int& cx, int& cy, Rng& rng){
         if(node->isLeaf()){
             cx = node->room.left + (node->room.right  - node->room.left) / 2;
             cy = node->room.top  + (node->room.bottom - node->room.top)  / 2;
             return;
         }
-        getLeafCenter(node->left, cx, cy);
+        const auto& child = (randInt(rng, 0, 1) == 0) ? node->left : node->right;
+        getLeafCenter(child, cx, cy, rng);
     }
 
-    void createCorridors(const std::unique_ptr<BSPNode>& node, std::vector<Corridor>& corridors){
+    void createCorridors(const std::unique_ptr<BSPNode>& node, std::vector<Corridor>& corridors, Rng& rng){
         if(node->isLeaf()) return;
 
-        createCorridors(node->left, corridors);
-        createCorridors(node->right, corridors);
+        createCorridors(node->left , corridors, rng);
+        createCorridors(node->right, corridors, rng);
 
         int x1, y1, x2, y2;
-        getLeafCenter(node->left, x1, y1);
-        getLeafCenter(node->right, x2, y2);
+        getLeafCenter(node->left , x1, y1, rng);
+        getLeafCenter(node->right, x2, y2, rng);
 
-        if((rand() % 2) == 0){
+        if(randInt(rng, 0, 1) == 0){
             corridors.push_back(Corridor{(x1 < x2) ? x1 : x2,
                                          y1 - 1,
                                          (x1 > x2) ? x1 : x2,
@@ -117,12 +124,17 @@ namespace{
 }
 
 void Dungeon2D::generate(unsigned seed){
-    srand(seed);
+    Rng rng(seed);
     
+    corridors.clear();
+    root.reset();
+
+    if(width < MIN_NODE_SIZE || height < MIN_NODE_SIZE) return;
+
     root = std::make_unique<BSPNode>();
     root->region = Rect{0, 0, width, height};
     
-    splitNode(root);
-    createCorridors(root, corridors);
+    splitNode(root, rng);
+    createCorridors(root, corridors, rng);
 }
 
