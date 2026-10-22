@@ -15,7 +15,7 @@ BehaviorTree::BehaviorTree(BTNodePtr root)     : m_root(std::move(root)){}
 
 // ----------------------------- methods ------------------------------------------------------------
 
-BTResult SelectorNode::tick(const BTContext& context) const {
+BTResult SelectorNode::tick(const BTContext& context) const{
     for(const BTNodePtr& child : m_children){
         BTResult result = child->tick(context);
         if(result.success)
@@ -24,7 +24,7 @@ BTResult SelectorNode::tick(const BTContext& context) const {
     return {false, ""};
 }
 
-BTResult SequenceNode::tick(const BTContext& context) const  {
+BTResult SequenceNode::tick(const BTContext& context) const{
     std::string lastCommand;
 
     for(const BTNodePtr& child : m_children){
@@ -38,15 +38,15 @@ BTResult SequenceNode::tick(const BTContext& context) const  {
     return {true, std::move(lastCommand)};
 }
 
-BTResult ConditionNode::tick(const BTContext& context) const  {
-    for(const auto& fact : context){
+BTResult ConditionNode::tick(const BTContext& context) const{
+    for(const std::pair<std::string, int>& fact : context){
         if(fact.first == m_name && fact.second != 0) 
             return {true, ""};
     }
     return {false, ""};
 }
 
-BTResult ActionNode::tick(const BTContext& /*context*/) const  {
+BTResult ActionNode::tick(const BTContext& /*context*/) const{
     return {true, m_command};
 }
 
