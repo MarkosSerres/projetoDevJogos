@@ -14,7 +14,7 @@ ActionNode::ActionNode(std::string command)    : m_command(std::move(command)) {
 BehaviorTree::BehaviorTree(BTNodePtr root)     : m_root(std::move(root)){}			
 
 // ----------------------------- methods ------------------------------------------------------------
-
+	
 BTResult SelectorNode::tick(const BTContext& context) const{
     for(const BTNodePtr& child : m_children){
         BTResult result = child->tick(context);
