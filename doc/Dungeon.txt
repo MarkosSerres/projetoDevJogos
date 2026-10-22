@@ -1,10 +1,10 @@
 # Documentation — Dungeon.cpp Implementation
 
-The `generate` method structures the dungeon topology based on the concept of Binary Space Partitioning.
+The generate method structures the dungeon topology based on the concept of Binary Space Partitioning.
 
 First, the method uses the provided seed as an argument to initialize the language's pseudo-random number generator. The algorithm then instantiates a root node, defining its region to encompass the entire available space.
-Next, it performs a split within the node's area—randomly choosing between a vertical or horizontal axis—which creates two smaller child nodes assigned to the `left` and `right` pointers. This operation is applied recursively to these new nodes, repeatedly subdividing the space until the resulting areas become too small for further partitioning.
-When a node can no longer be split, it becomes a leaf in the tree (where `isLeaf` returns `true`).
+Next, it performs a split within the node's area—randomly choosing between a vertical or horizontal axis—which creates two smaller child nodes assigned to the left and righ pointers. This operation is applied recursively to these new nodes, repeatedly subdividing the space until the resulting areas become too small for further partitioning.
+When a node can no longer be split, it becomes a leaf in the tree (where isLeaf returns true).
 Within the region defined by each leaf, the algorithm allocates a rectangular room. A constraint is imposed: the random dimension calculations must not result in rooms smaller than 5 by 5 tiles.
 Rooms must be contained entirely within the boundaries of their respective leaf's region. The design requirements mandate a single, fully connected geographic space, ensuring that no rooms are left inaccessible.
 The algorithm then traverses back up the tree, analyzing parent nodes to construct corridors that link the structures belonging to the left child node with those belonging to the right child node. Each generated corridor is instantiated as a `Corridor` object and stored in a list called `corridors`.
