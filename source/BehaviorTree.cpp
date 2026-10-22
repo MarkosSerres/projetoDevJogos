@@ -1,15 +1,11 @@
 #include "BehaviorTree.hpp"
-#include <assert.h>
+#include <cassert>
 
-SelectorNode::SelectorNode(std::vector<BTNodePtr> children) : m_children(std::move(children)) { 
-    for (const auto& child : m_children)
-        assert(child != nullptr);
-}
+// ------------------ constructor methods ------------------------------------------------------------
 
-SequenceNode::SequenceNode(std::vector<BTNodePtr> children) : m_children(std::move(children)) {
-    for(const auto& child : m_children)
-        assert(child != nullptr);
-}
+SelectorNode::SelectorNode(std::vector<BTNodePtr> children) : m_children(std::move(children)) {}
+
+SequenceNode::SequenceNode(std::vector<BTNodePtr> children) : m_children(std::move(children)) {}
 
 ConditionNode::ConditionNode(std::string name) : m_name(std::move(name)) {}
 
@@ -17,6 +13,7 @@ ActionNode::ActionNode(std::string command)    : m_command(std::move(command)) {
 
 BehaviorTree::BehaviorTree(BTNodePtr root)     : m_root(std::move(root)){}			
 
+// ----------------------------- methods ------------------------------------------------------------
 
 BTResult SelectorNode::tick(const BTContext& context) const {
     for(const BTNodePtr& child : m_children){
@@ -49,7 +46,7 @@ BTResult ConditionNode::tick(const BTContext& context) const  {
     return {false, ""};
 }
 
-BTResult ActionNode::tick(const BTContext& context) const  {
+BTResult ActionNode::tick(const BTContext& /*context*/) const  {
     return {true, m_command};
 }
 
