@@ -1,193 +1,144 @@
 #include "PathFind.hpp"
-
-#include <algorithm>
-#include <cassert>
 #include <cmath>
-#include <cstddef>
-#include <cstdlib>
-#include <limits>
-#include <queue>
+#include <algorithm>
 
+constexpr int ORTHOGONAL_COST = 10;
+constexpr int DIAGONAL_COST   = 14;
 
 namespace {
-
-    constexpr double ORTHOGONAL_COST = 1.0;
-    constexpr double DIAGONAL_COST   = 1.4142135623730951;   // sqrt(2)
-
-    constexpr std::size_t NO_PARENT = std::numeric_limits<std::size_t>::max();
-
-    struct Step {
-        int    dCol;
-        int    dRow;
-        double cost;
+    struct Node {
+        int x{0};
+        int y{0};
+        int g{0};
+        int h{0};
+        int f{0};
+        Node* parent{nullptr};
+        bool closed{false};
+        bool inOpen{false};
     };
-
-    constexpr Step STEPS[8] = {
-        { 1,  0, ORTHOGONAL_COST}, {-1,  0, ORTHOGONAL_COST},
-        { 0,  1, ORTHOGONAL_COST}, { 0, -1, ORTHOGONAL_COST},
-        { 1,  1, DIAGONAL_COST},   { 1, -1, DIAGONAL_COST},
-        {-1,  1, DIAGONAL_COST},   {-1, -1, DIAGONAL_COST},
-    };
-
-    /// One entry of the open list. The same cell may be queued several times (a
-    /// cheaper route was found later); stale copies are skipped when popped.
-    struct OpenEntry {
-        double      f;       ///< g + h
-        double      h;       ///< heuristic, used only to break ties on f
-        std::size_t index;   ///< row * width + col
-    };
-
-    /// std::priority_queue is a max-heap, so "less" here means "worse": a larger f
-    /// is worse, then a larger h, then a larger index.
-    struct OpenEntryWorse {
-        bool operator()(const OpenEntry& a, const OpenEntry& b) const {
-            if (a.f != b.f) return a.f > b.f;
-            if (a.h != b.h) return a.h > b.h;
-            return a.index > b.index;
-        }
-    };
-
-    /// Octile distance between two cells.
-    double heuristic(int col, int row, int goalCol, int goalRow) {
-        const int dx = std::abs(col - goalCol);
-        const int dy = std::abs(row - goalRow);
-        const int diagonalSteps = std::min(dx, dy);
-        const int straightSteps = std::max(dx, dy) - diagonalSteps;
-        return DIAGONAL_COST * diagonalSteps + ORTHOGONAL_COST * straightSteps;
-    }
-
-    /// World position -> cell, using col = floor(x / TILE_SIZE), row = floor(y / TILE_SIZE).
-    /// Returns false when the cell lies outside the matrix. The range test is written
-    /// so that NaN fails it, and it runs BEFORE the conversion to int, so infinities
-    /// and huge values never reach an out-of-range float-to-int cast.
-    bool worldToCell(const Vector2D& world, int width, int height, int& col, int& row) {
-        const float fx = std::floor(world.x / TILE_SIZE);
-        const float fy = std::floor(world.y / TILE_SIZE);
-
-        if (!(fx >= 0.0f && fx < static_cast<float>(width)))  return false;
-        if (!(fy >= 0.0f && fy < static_cast<float>(height))) return false;
-
-        col = static_cast<int>(fx);
-        row = static_cast<int>(fy);
-        return true;
-    }
-
-    /// Centre of a cell in world coordinates (Global.hpp convention).
-    Vector2D cellCentre(int col, int row) {
-        return Vector2D{
-            (static_cast<float>(col) + 0.5f) * TILE_SIZE,
-            (static_cast<float>(row) + 0.5f) * TILE_SIZE
-        };
-    }
-
-}  // namespace
-
-PathFind::PathFind(const int* grid, int width, int height)
-    : m_grid(grid), m_width(width), m_height(height) {
-    assert(grid != nullptr);
-    assert(width > 0 && height > 0);
 }
 
-std::vector<Vector2D> PathFind::findPath(const Vector2D& startWorld,
-                                         const Vector2D& goalWorld) const {
+PathFind::PathFind(const int* grid, int width, int height)
+    : m_grid(grid), m_width(width), m_height(height){}
+
+std::vector<Vector2D> PathFind::findPath(const Vector2D& startWorld, const Vector2D& goalWorld) const {
     std::vector<Vector2D> path;
 
-    // Only reachable if the constructor's preconditions were broken in a build
-    // where assert is disabled; answer "no path" instead of reading bad memory.
-    if (m_grid == nullptr || m_width <= 0 || m_height <= 0) {
+    if(m_grid == nullptr || m_width <= 0 || m_height <= 0)
         return path;
-    }
 
-    int startCol = 0, startRow = 0, goalCol = 0, goalRow = 0;
-    if (!worldToCell(startWorld, m_width, m_height, startCol, startRow) ||
-        !worldToCell(goalWorld,  m_width, m_height, goalCol,  goalRow)) {
+    const float fx = std::floor(startWorld.x / TILE_SIZE), fy = std::floor(startWorld.y / TILE_SIZE);
+    const float gx = std::floor(goalWorld.x  / TILE_SIZE), gy = std::floor(goalWorld.y  / TILE_SIZE);
+    const float W = static_cast<float>(m_width), H = static_cast<float>(m_height);
+    
+    if (!(fx >= 0 && fx < W && fy >= 0 && fy < H && gx >= 0 && gx < W && gy >= 0 && gy < H)) 
         return path;
-    }
+    int startX = static_cast<int>(fx), startY = static_cast<int>(fy);
+    int goalX  = static_cast<int>(gx), goalY  = static_cast<int>(gy);;
 
-    const auto indexOf = [this](int col, int row) {
-        return static_cast<std::size_t>(row) * static_cast<std::size_t>(m_width) + static_cast<std::size_t>(col);
+    auto isValid = [this](int x, int y) {
+        return x >= 0 && x < m_width && y >= 0 && y < m_height;
     };
 
-    // Out-of-range cells count as not walkable, which also covers the neighbours
-    // of cells on the border.
-    const auto walkable = [this, &indexOf](int col, int row) {
-        return col >= 0 && col < m_width && row >= 0 && row < m_height &&
-               m_grid[indexOf(col, row)] == EMPTY_TILE;
+    auto isWalkable = [this](int x, int y) {
+        return m_grid[y * m_width + x] == EMPTY_TILE;
     };
 
-    if (!walkable(startCol, startRow) || !walkable(goalCol, goalRow)) {
+    if(!isValid(startX, startY) || !isValid(goalX, goalY)) 
         return path;
-    }
-
-    const std::size_t startIndex = indexOf(startCol, startRow);
-    const std::size_t goalIndex  = indexOf(goalCol, goalRow);
-
-    if (startIndex == goalIndex) {
-        path.push_back(cellCentre(startCol, startRow));
+    if(!isWalkable(startX, startY) || !isWalkable(goalX, goalY)) 
         return path;
+
+    std::vector<Node> nodes(m_width * m_height);
+    for(int i = 0; i < m_width * m_height; ++i) {
+        nodes[i].x = i % m_width;
+        nodes[i].y = i / m_width;
     }
 
-    const std::size_t cellCount = static_cast<std::size_t>(m_width) * static_cast<std::size_t>(m_height);
-    std::vector<double>      gScore(cellCount, std::numeric_limits<double>::infinity());
-    std::vector<std::size_t> cameFrom(cellCount, NO_PARENT);
-    std::vector<char>        closed(cellCount, 0);
+    std::vector<Node*> openList;
+    Node* startNode = &nodes[startY * m_width + startX];
+    Node* goalNode  = &nodes[goalY * m_width + goalX];
 
-    std::priority_queue<OpenEntry, std::vector<OpenEntry>, OpenEntryWorse> open;
+    openList.push_back(startNode);
+    startNode->inOpen = true;
 
-    gScore[startIndex] = 0.0;
-    const double startH = heuristic(startCol, startRow, goalCol, goalRow);
-    open.push(OpenEntry{startH, startH, startIndex});
+    bool found = false;
 
-    while (!open.empty()) {
-        const OpenEntry current = open.top();
-        open.pop();
+    while (!openList.empty()) {
+        Node* q = openList[0];
+        size_t qIndex = 0;
 
-        if (closed[current.index]) {
-            continue;   // stale duplicate of a cell that was already expanded
-        }
-        closed[current.index] = 1;
-
-        if (current.index == goalIndex) {
-            // Walk the parent links back to the start, then flip the order.
-            for (std::size_t i = goalIndex; i != NO_PARENT; i = cameFrom[i]) {
-                path.push_back(cellCentre(static_cast<int>(i % static_cast<std::size_t>(m_width)),
-                                          static_cast<int>(i / static_cast<std::size_t>(m_width))));
+        for (size_t i = 1; i < openList.size(); ++i) {
+            if (openList[i]->f < q->f) {
+                q = openList[i];
+                qIndex = i;
             }
-            std::reverse(path.begin(), path.end());
-            return path;
         }
 
-        const int col = static_cast<int>(current.index % static_cast<std::size_t>(m_width));
-        const int row = static_cast<int>(current.index / static_cast<std::size_t>(m_width));
+        openList[qIndex] = openList.back();
+        openList.pop_back();
+        q->inOpen = false;
+        q->closed = true;
 
-        for (const Step& step : STEPS) {
-            const int nextCol = col + step.dCol;
-            const int nextRow = row + step.dRow;
+        if(q == goalNode){
+            found = true;
+            break;
+        }
 
-            if (!walkable(nextCol, nextRow)) {
+        int dx[8] = {-1,  0,  1,  -1, 1,  -1, 0, 1};
+        int dy[8] = {-1, -1, -1,   0, 0,   1, 1, 1};
+
+        for(int i = 0; i < 8; ++i) {
+            int nx = q->x + dx[i];
+            int ny = q->y + dy[i];
+
+            if(!isValid(nx, ny) || !isWalkable(nx, ny))
                 continue;
+
+            if(dx[i] != 0 && dy[i] != 0) {
+                if (!isWalkable(q->x + dx[i], q->y) || !isWalkable(q->x, q->y + dy[i]))
+                    continue;
             }
 
-            const bool diagonal = (step.dCol != 0 && step.dRow != 0);
-            if (diagonal && !(walkable(col + step.dCol, row) && walkable(col, row + step.dRow))) {
-                continue;   // would clip the corner of a wall
-            }
-
-            const std::size_t nextIndex = indexOf(nextCol, nextRow);
-            if (closed[nextIndex]) {
+            Node* successorNode = &nodes[ny * m_width + nx];
+            if(successorNode->closed)
                 continue;
-            }
 
-            const double tentative = gScore[current.index] + step.cost;
-            if (tentative < gScore[nextIndex]) {
-                gScore[nextIndex]  = tentative;
-                cameFrom[nextIndex] = current.index;
+            int cost = (dx[i] != 0 && dy[i] != 0) ? DIAGONAL_COST : ORTHOGONAL_COST;
+            int newg = q->g + cost;
 
-                const double h = heuristic(nextCol, nextRow, goalCol, goalRow);
-                open.push(OpenEntry{tentative + h, h, nextIndex});
+            int diffX = std::abs(successorNode->x - goalNode->x);
+            int diffY = std::abs(successorNode->y - goalNode->y);
+            int max = std::max(diffX, diffY);
+            int min = std::min(diffX, diffY);
+            int newh = (ORTHOGONAL_COST * (max - min)) + (DIAGONAL_COST * min);
+            
+            int newf = newg + newh;
+
+            if(!successorNode->inOpen || newf < successorNode->f) {
+                successorNode->g = newg;
+                successorNode->h = newh;
+                successorNode->f = newf;
+                successorNode->parent = q;
+
+                if(!successorNode->inOpen) {
+                    openList.push_back(successorNode);
+                    successorNode->inOpen = true;
+                }
             }
         }
     }
 
-    return path;   // open list exhausted: the goal cannot be reached
+    if(found){
+        Node* trace = goalNode;
+        while(trace != nullptr){
+            float px = (trace->x * TILE_SIZE) + (TILE_SIZE / 2.0f);
+            float py = (trace->y * TILE_SIZE) + (TILE_SIZE / 2.0f);
+            path.push_back(Vector2D(px, py));
+            trace = trace->parent;
+        }
+        std::reverse(path.begin(), path.end());
+    }
+
+    return path;
 }
