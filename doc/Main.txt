@@ -1,0 +1,37 @@
+# Documentation — Main.cpp Implementation
+
+## Overview
+
+The `Main` class acts as the top-level orchestrator and application entry point for the game:
+- Owns the core world subsystems: `Dungeon2D` (procedural BSP geometry), `TileMap` (discrete tile grid), and the `Entity` representing the player (`PLAYER_ID`);
+- Coordinates the standard game lifecycle (`init`, `run`, `update`, `render`, `shutdown`);
+- Provides the `main()` entry point that instantiates `Main` and delegates execution to `run()`.
+
+## Constructor
+
+- Initializes `m_dungeon` with the requested tile dimensions (`mapWidthTiles`, `mapHeightTiles`, defaulting to `40x25`) and stores `m_seed` (default `42`);
+- Assigns the reserved `PLAYER_ID` from `Global.hpp` to `m_player.id`.
+
+## init Implementation
+
+- Calls `m_dungeon.generate(m_seed)` to construct the BSP tree and corridor list;
+- Rasterizes the generated dungeon into `m_tileMap` via `m_tileMap.loadFromDungeon(m_dungeon)`;
+- Validates that the resulting grid has positive dimensions (`width > 0` and `height > 0`), returning `false` on failure;
+- Queries `m_tileMap.randomEmptyCell(startCol, startRow)` and converts the cell to continuous world coordinates using `m_tileMap.toWorld(...)` to spawn `m_player`;
+- Sets `m_player.active = true` and `m_running = true`, then returns `true`.
+
+## run Implementation
+
+- Invokes `init()`; if initialization fails, logs an error to `std::cerr` and returns exit code `1`;
+- Currently performs a single simulation step (`update(fixedDt)` with `1.0f / 60.0f`), invokes `render()`, and calls `shutdown()` so the project builds and executes cleanly before a real-time window/event loop (e.g., SFML) is integrated;
+- Returns `0` on normal termination.
+
+## update and render Implementation
+
+- `update(float dt)`: Guards on `m_running` and serves as the integration point for physics (`RigidBody2D`), collision resolution (`Collision2D`), pathfinding (`PathFind`), and AI (`BehaviorTree`);
+- `render()`: Guards on `m_running` and currently prints the initialized map dimensions and player world coordinates to `std::cout` as a placeholder until graphical rendering is added.
+
+## shutdown and Accessors
+
+- `shutdown()`: Sets `m_running = false` (`noexcept`) to signal loop termination;
+- `isRunning()`, `tileMap()`, and `player()`: Read-only `noexcept` accessors exposing the current loop state, tile map, and player entity.
