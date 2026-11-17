@@ -50,4 +50,14 @@ constexpr float TILE_SIZE = 64.0f;
 /// Tolerance used in floating-point comparisons.
 constexpr float EPSILON = 0.0001f;
 
+constexpr int MAP_WIDTH = 80;
+constexpr int MAP_HEIGHT = 70;
+constexpr int SEED = 42;
+constexpr float FIXED_DT = 1.0f / 30.0f;
+
+
+constexpr const char* FLOOR_TEX  = "floor.png";
+constexpr const char* WALL_TEX   = "wall.png";
+constexpr const char* PLAYER_TEX = "player.png";
+
 #endif // GAME_GLOBAL_HPP

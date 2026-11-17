@@ -6,6 +6,7 @@
 #include "Entity.hpp"
 #include "Global.hpp"
 #include "TileMap.hpp"
+#include "Renderer.hpp"
 
 /**
  * @file Main.hpp
@@ -27,7 +28,7 @@ public:
      * @param mapHeightTiles Height of the generated dungeon in tiles (> 0).
      * @param seed           Seed passed to Dungeon2D::generate().
      */
-    Main(int mapWidthTiles = 40, int mapHeightTiles = 25, unsigned seed = 42);
+    Main(sf::RenderWindow& win, int mapWidthTiles = MAP_WIDTH, int mapHeightTiles = MAP_HEIGHT, unsigned seed = SEED);
 
     ~Main() = default;
 
@@ -56,7 +57,7 @@ public:
     /**
      * @brief Renders the current world state.
      */
-    void render() const;
+    void render();
 
     /**
      * @brief Releases resources and marks the loop as stopped.
@@ -80,6 +81,7 @@ private:
     Entity    m_player;
     unsigned  m_seed{42};
     bool      m_running{false};
+    Renderer  m_renderer;
 };
 
 #endif // GAME_MAIN_HPP

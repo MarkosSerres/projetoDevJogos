@@ -1,9 +1,11 @@
 #include "Main.hpp"
 #include <iostream>
 
-Main::Main(int mapWidthTiles, int mapHeightTiles, unsigned seed)
+Main::Main(sf::RenderWindow& win, int mapWidthTiles, int mapHeightTiles, unsigned seed)
     : m_dungeon(mapWidthTiles, mapHeightTiles)
-    , m_seed(seed) {
+    , m_seed(seed)
+    , m_renderer(win) 
+{
     m_player.id = PLAYER_ID;
 }
 
@@ -20,9 +22,14 @@ bool Main::init() {
     m_tileMap.randomEmptyCell(startCol, startRow);
     m_player.body.position = m_tileMap.toWorld(startCol, startRow);
     m_player.active = true;
-
+    
+    if(!m_renderer.loadResources()){ 
+        
+        return false;
+    }
+    m_renderer.setupMapView();
     m_running = true;
-    return true;
+    return m_running = true;
 }
 
 int Main::run() {
@@ -33,13 +40,30 @@ int Main::run() {
 
     // Minimal single-step execution until the real-time loop and renderer
     // (e.g., SFML window + clock) are wired in.
-    constexpr float fixedDt = 1.0f / 60.0f;
     if (m_running) {
-        update(fixedDt);
+        update(FIXED_DT);
         render();
         shutdown();
     }
 
+    sf::Clock clock;
+    
+    while(m_renderer.getWindow().isOpen()){
+        while(const std::optional event = m_renderer.getWindow().pollEvent()){
+            if(event->is<sf::Event::Closed>()){
+                m_renderer.getWindow().close();
+            }
+        }
+        float dt = std::min(clock.restart().asSeconds(), FIXED_DT);
+
+        if(dt > 0){
+            update(dt);
+        }
+
+        render();
+    }
+
+    shutdown();
     return 0;
 }
 
@@ -52,11 +76,13 @@ void Main::update(float dt) {
     (void)dt;
 }
 
-void Main::render() const {
+void Main::render() {
     if (!m_running) {
         return;
     }
-
+    m_renderer.beginFrame();
+    m_renderer.drawMap(m_tileMap);
+    m_renderer.endFrame();
     // Placeholder console output until SFML rendering is attached.
     std::cout << "Dungeon ready: "
               << m_tileMap.width() << "x" << m_tileMap.height() << " tiles | "
@@ -82,6 +108,8 @@ const Entity& Main::player() const noexcept {
 }
 
 int main() {
-    Main app;
+    sf::RenderWindow window(sf::VideoMode({1200, 900}), "Joguinho");
+    Main app(window);
+
     return app.run();
 }
