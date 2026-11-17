@@ -1,0 +1,38 @@
+# Documentation — Menu.cpp Implementation
+
+## Overview
+
+The `Menu` class manages the state, navigation, and configuration data of the game's menu system independently from any graphical library (such as SFML):
+- Tracks the active screen (`MenuScreen::Main`, `MenuScreen::Options`, `MenuScreen::Credits`);
+- Tracks the highlighted item index (`m_selectedIndex`) with wrap-around navigation;
+- Stores user settings in `MenuSettings` (available/selected screen resolutions, audio volume, and music volume).
+
+## Screens and Options
+
+### Main Screen (`MenuScreen::Main`)
+- `Jogar` (`MainOption::Play`): emits `MenuAction::StartGame`;
+- `Opcoes` (`MainOption::Options`): transitions to `MenuScreen::Options` and emits `MenuAction::OpenOptions`;
+- `Creditos` (`MainOption::Credits`): transitions to `MenuScreen::Credits` and emits `MenuAction::OpenCredits`;
+- `Sair` (`MainOption::Exit`): emits `MenuAction::ExitGame`.
+
+### Options Submenu (`MenuScreen::Options`)
+- `Resolucao` (`OptionsItem::Resolution`): cycles through `availableResolutions` (default presets: `800x600`, `1280x720`, `1600x900`, `1920x1080`);
+- `Audio` (`OptionsItem::Audio`): adjusts SFX/master audio volume in `[0, 100]` in steps of `VOLUME_STEP` (10);
+- `Musica` (`OptionsItem::Music`): adjusts music volume in `[0, 100]` in steps of `VOLUME_STEP` (10);
+- `Voltar` (`OptionsItem::Back`): returns to `MenuScreen::Main` and emits `MenuAction::BackToMain`.
+
+### Credits Screen (`MenuScreen::Credits`)
+- Exposes credit text lines via `creditsLines()` and a single `Voltar` item that returns to `MenuScreen::Main`.
+
+## Navigation and State Transitions
+
+- `moveUp()` and `moveDown()`: move `m_selectedIndex` within `[0, itemCount() - 1]` with wrap-around;
+- `adjustLeft()` and `adjustRight()`: delegate to `adjustCurrentOption(-1)` / `adjustCurrentOption(1)` when on `MenuScreen::Options`;
+- `confirm()`: executes the selected option on the current screen (advances settings on Options, triggers transitions/actions on Main, or returns on Credits/Back);
+- `back()`: returns from `Options` or `Credits` to `MenuScreen::Main`, resetting `m_selectedIndex` to `0`.
+
+## Queries for the Rendering Layer
+
+- `currentScreen()`, `selectedIndex()`, `itemCount()`: provide the active state for layout and highlight rendering;
+- `currentItems()`: returns formatted labels for the active screen;
+- `settings()`, `currentResolution()`, `audioVolume()`, `musicVolume()`: expose current configuration values so the SFML/audio layers can apply them.
