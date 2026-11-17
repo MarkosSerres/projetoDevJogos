@@ -1,12 +1,12 @@
 #ifndef GAME_MAIN_HPP
 #define GAME_MAIN_HPP
 
-#include <memory>
 #include "Dungeon2D.hpp"
 #include "Entity.hpp"
 #include "Global.hpp"
 #include "TileMap.hpp"
 #include "Renderer.hpp"
+#include "Menu.hpp"
 
 /**
  * @file Main.hpp
@@ -20,6 +20,12 @@
  * are stored in continuous pixels (Y-down) while the discrete grid lives in
  * TileMap.
  */
+
+enum class AppState {
+    Menu,
+    Playing
+};
+
 class Main {
 public:
     /**
@@ -30,14 +36,10 @@ public:
      */
     Main(sf::RenderWindow& win, int mapWidthTiles = MAP_WIDTH, int mapHeightTiles = MAP_HEIGHT, unsigned seed = SEED);
 
-    ~Main() = default;
-
     // --- Lifecycle ---------------------------------------------------------
 
     /**
-     * @brief Initializes world subsystems before entering the loop.
-     * @details Generates the BSP dungeon, rasterizes it into the TileMap, and
-     *          places the player entity at a valid empty cell.
+     * @brief Loads resources and prepares the menu before entering the loop.
      * @return true if initialization succeeded.
      */
     [[nodiscard]] bool init();
@@ -59,9 +61,7 @@ public:
      */
     void render();
 
-    /**
-     * @brief Releases resources and marks the loop as stopped.
-     */
+    /** Marks the application loop as stopped. */
     void shutdown() noexcept;
 
     // --- Queries -----------------------------------------------------------
@@ -76,12 +76,17 @@ public:
     [[nodiscard]] const Entity& player() const noexcept;
 
 private:
+    void startNewGame();
+    void handleMenuClick(const sf::Vector2i& pixelPos);
+
     Dungeon2D m_dungeon;
     TileMap   m_tileMap;
     Entity    m_player;
-    unsigned  m_seed{42};
+    unsigned  m_seed;
     bool      m_running{false};
     Renderer  m_renderer;
+    Menu      m_menu;
+    AppState  m_state{AppState::Menu};
 };
 
 #endif // GAME_MAIN_HPP
