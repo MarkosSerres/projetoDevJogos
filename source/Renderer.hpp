@@ -6,6 +6,7 @@
 
 #include "TileMap.hpp"
 #include "Menu.hpp"
+#include "Player.hpp"
 
 
 class Renderer{
@@ -13,12 +14,15 @@ public:
     explicit Renderer(sf::RenderWindow& win);
 
     bool loadResources();
-    void setupMapView(float zoomFactor = 0.2f);
+    void setupMapView(float zoomFactor = 1.0f);
+    void updateCamera(const Vector2D& targetPos);
 
     sf::RenderWindow& getWindow();
 
     void beginFrame();
     void drawMap(const TileMap& tileMap);
+    void drawPlayer(const Player& player);
+    void drawDarkness(const Vector2D& lightCenter, float lightRadius);
 
     void drawMenu(const Menu& menu);
     sf::FloatRect getMenuButtonBounds(const Menu& menu, std::size_t index) const;
@@ -36,6 +40,7 @@ private:
 
     sf::Texture m_floorTex;
     sf::Texture m_wallTex;
+    sf::Texture m_darknessTex;
     std::array<sf::Texture, static_cast<std::size_t>(MainOption::Count)> m_mainBtnTex;
     sf::Texture m_backBtnTex;
     sf::Font m_font;

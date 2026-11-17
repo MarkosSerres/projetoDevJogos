@@ -2,8 +2,8 @@
 #define GAME_MAIN_HPP
 
 #include "Dungeon2D.hpp"
-#include "Entity.hpp"
 #include "Global.hpp"
+#include "Player.hpp"
 #include "TileMap.hpp"
 #include "Renderer.hpp"
 #include "Menu.hpp"
@@ -73,7 +73,7 @@ public:
     [[nodiscard]] const TileMap& tileMap() const noexcept;
 
     /// Read-only access to the player entity.
-    [[nodiscard]] const Entity& player() const noexcept;
+    [[nodiscard]] const Player& player() const noexcept;
 
 private:
     void startNewGame();
@@ -81,7 +81,7 @@ private:
 
     Dungeon2D m_dungeon;
     TileMap   m_tileMap;
-    Entity    m_player;
+    Player    m_player;
     unsigned  m_seed;
     bool      m_running{false};
     Renderer  m_renderer;

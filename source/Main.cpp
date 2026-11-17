@@ -28,7 +28,8 @@ void Main::startNewGame() {
     m_player.body.position = m_tileMap.toWorld(startCol, startRow);
     m_player.active = true;
 
-    m_renderer.setupMapView();
+    m_renderer.setupMapView(1.0f);
+    m_renderer.updateCamera(m_player.body.position);
     m_state = AppState::Playing;
     m_running = true;
 }
@@ -71,8 +72,26 @@ void Main::update(float dt) {
         return;
     }
 
-    // TODO: integrate RigidBody2D, Collision2D, PathFind and BehaviorTree ticks.
-    (void)dt;
+    Vector2D moveDir{ 0.0f, 0.0f };
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)) {
+        moveDir.y -= 1.0f;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down)) {
+        moveDir.y += 1.0f;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) {
+        moveDir.x -= 1.0f;
+    }
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)) {
+        moveDir.x += 1.0f;
+    }
+
+    m_player.move(moveDir, dt, m_tileMap);
+    m_renderer.updateCamera(m_player.body.position);
 }
 
 void Main::render() {
@@ -82,11 +101,13 @@ void Main::render() {
 
     m_renderer.beginFrame();
 
-        if (m_state == AppState::Menu) {
+    if (m_state == AppState::Menu) {
         m_renderer.drawMenu(m_menu);
-        } else {
+    } else {
         m_renderer.drawMap(m_tileMap);
-        }
+        m_renderer.drawPlayer(m_player);
+        m_renderer.drawDarkness(m_player.body.position, m_player.visionRadius);
+    }
 
     m_renderer.endFrame();
 }
@@ -143,7 +164,7 @@ const TileMap& Main::tileMap() const noexcept {
     return m_tileMap;
 }
 
-const Entity& Main::player() const noexcept {
+const Player& Main::player() const noexcept {
     return m_player;
 }
 

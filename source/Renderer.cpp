@@ -1,4 +1,7 @@
 #include "Renderer.hpp"
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 
 namespace {
 constexpr float MENU_START_Y = 220.0f;
@@ -22,14 +25,43 @@ Renderer::Renderer(sf::RenderWindow& win)
 bool Renderer::loadResources() {
     using Option = MainOption;
 
-    return m_floorTex.loadFromFile(FLOOR_TEX) &&
-           m_wallTex.loadFromFile(WALL_TEX) &&
-           m_mainBtnTex[static_cast<std::size_t>(Option::Play)].loadFromFile(PLAY_BTN_TEX) &&
-           m_mainBtnTex[static_cast<std::size_t>(Option::Options)].loadFromFile(OPTIONS_BTN_TEX) &&
-           m_mainBtnTex[static_cast<std::size_t>(Option::Credits)].loadFromFile(CREDITS_BTN_TEX) &&
-           m_mainBtnTex[static_cast<std::size_t>(Option::Exit)].loadFromFile(EXIT_BTN_TEX) &&
-           m_backBtnTex.loadFromFile(BACK_BTN_TEX) &&
-           m_font.openFromFile(MENU_FONT);
+    const bool loaded =
+        m_floorTex.loadFromFile(FLOOR_TEX) &&
+        m_wallTex.loadFromFile(WALL_TEX) &&
+        m_mainBtnTex[static_cast<std::size_t>(Option::Play)].loadFromFile(PLAY_BTN_TEX) &&
+        m_mainBtnTex[static_cast<std::size_t>(Option::Options)].loadFromFile(OPTIONS_BTN_TEX) &&
+        m_mainBtnTex[static_cast<std::size_t>(Option::Credits)].loadFromFile(CREDITS_BTN_TEX) &&
+        m_mainBtnTex[static_cast<std::size_t>(Option::Exit)].loadFromFile(EXIT_BTN_TEX) &&
+        m_backBtnTex.loadFromFile(BACK_BTN_TEX) &&
+        m_font.openFromFile(MENU_FONT);
+
+    if (!loaded) {
+        return false;
+    }
+
+    // Build a 256x256 radial alpha mask: transparent center -> solid black edge.
+    constexpr unsigned TEX_SIZE = 256;
+    sf::Image darknessImg({ TEX_SIZE, TEX_SIZE }, sf::Color::Black);
+    const float half = static_cast<float>(TEX_SIZE) * 0.5f;
+
+    for (unsigned y = 0; y < TEX_SIZE; ++y) {
+        for (unsigned x = 0; x < TEX_SIZE; ++x) {
+            const float dx = (static_cast<float>(x) + 0.5f - half) / half;
+            const float dy = (static_cast<float>(y) + 0.5f - half) / half;
+            const float dist = std::clamp(std::sqrt(dx * dx + dy * dy), 0.0f, 1.0f);
+            // Smoothstep fade-out from inner lit core to total darkness at dist = 1.
+            const float t = std::clamp((dist - 0.15f) / 0.85f, 0.0f, 1.0f);
+            const float alphaF = t * t * (3.0f - 2.0f * t);
+            const auto alpha = static_cast<std::uint8_t>(alphaF * 255.0f + 0.5f);
+            darknessImg.setPixel({ x, y }, sf::Color(0, 0, 0, alpha));
+        }
+    }
+
+    if (!m_darknessTex.loadFromImage(darknessImg)) {
+        return false;
+    }
+    m_darknessTex.setSmooth(true);
+    return true;
 }
 
 const sf::Texture& Renderer::menuButtonTexture(const Menu& menu, std::size_t index) const {
@@ -127,6 +159,11 @@ void Renderer::setupMapView(float zoomFactor) {
     m_window.setView(m_mapView);
 }
 
+void Renderer::updateCamera(const Vector2D& targetPos) {
+    m_mapView.setCenter({ targetPos.x, targetPos.y });
+    m_window.setView(m_mapView);
+}
+
 void Renderer::drawMenu(const Menu& menu) {
     m_window.setView(m_window.getDefaultView());
 
@@ -200,6 +237,7 @@ sf::RenderWindow& Renderer::getWindow() {
 }
 
 void Renderer::drawMap(const TileMap& tileMap) {
+    m_window.setView(m_mapView);
     for (int row = 0; row < tileMap.height(); ++row) {
         for (int col = 0; col < tileMap.width(); ++col) {
             m_tileSprite.setTexture(tileMap.isWall(col, row) ? m_wallTex : m_floorTex, true);
@@ -210,6 +248,70 @@ void Renderer::drawMap(const TileMap& tileMap) {
             m_window.draw(m_tileSprite);
         }
     }
+}
+
+void Renderer::drawPlayer(const Player& player) {
+    if (!player.active) {
+        return;
+    }
+
+    const float radius = std::min(player.collision.halfExtents.x, player.collision.halfExtents.y);
+    sf::CircleShape bodyShape(radius);
+    bodyShape.setOrigin({ radius, radius });
+    bodyShape.setPosition({ player.body.position.x, player.body.position.y });
+    bodyShape.setFillColor(sf::Color(235, 200, 70));
+    bodyShape.setOutlineThickness(2.0f);
+    bodyShape.setOutlineColor(sf::Color(40, 30, 15));
+    m_window.draw(bodyShape);
+}
+
+void Renderer::drawDarkness(const Vector2D& lightCenter, float lightRadius) {
+    if (lightRadius <= 0.0f) {
+        return;
+    }
+
+    const sf::Vector2f viewCenter = m_mapView.getCenter();
+    const sf::Vector2f viewSize   = m_mapView.getSize();
+
+    const float viewLeft   = viewCenter.x - viewSize.x * 0.5f;
+    const float viewRight  = viewCenter.x + viewSize.x * 0.5f;
+    const float viewTop    = viewCenter.y - viewSize.y * 0.5f;
+    const float viewBottom = viewCenter.y + viewSize.y * 0.5f;
+
+    const float boxLeft   = lightCenter.x - lightRadius;
+    const float boxRight  = lightCenter.x + lightRadius;
+    const float boxTop    = lightCenter.y - lightRadius;
+    const float boxBottom = lightCenter.y + lightRadius;
+
+    // 1. Radial fade-out circle centered on the player.
+    sf::Sprite lightMask(m_darknessTex);
+    const sf::Vector2u texSize = m_darknessTex.getSize();
+    const float diameter = lightRadius * 2.0f;
+    lightMask.setScale({
+        diameter / static_cast<float>(texSize.x),
+        diameter / static_cast<float>(texSize.y)
+    });
+    lightMask.setPosition({ boxLeft, boxTop });
+    m_window.draw(lightMask);
+
+    // 2. Solid black rectangles covering the remainder of the viewport.
+    auto drawBlackRect = [this](float left, float top, float right, float bottom) {
+        if (right <= left || bottom <= top) {
+            return;
+        }
+        sf::RectangleShape rect({ right - left, bottom - top });
+        rect.setPosition({ left, top });
+        rect.setFillColor(sf::Color::Black);
+        m_window.draw(rect);
+    };
+
+    drawBlackRect(viewLeft, viewTop, viewRight, std::min(viewBottom, boxTop));
+    drawBlackRect(viewLeft, std::max(viewTop, boxBottom), viewRight, viewBottom);
+
+    const float midTop    = std::max(viewTop, boxTop);
+    const float midBottom = std::min(viewBottom, boxBottom);
+    drawBlackRect(viewLeft, midTop, std::min(viewRight, boxLeft), midBottom);
+    drawBlackRect(std::max(viewLeft, boxRight), midTop, viewRight, midBottom);
 }
 
 void Renderer::beginFrame() {
