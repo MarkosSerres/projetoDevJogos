@@ -37,7 +37,7 @@ struct Player : Entity {
     void move(const Vector2D& direction, float dt, const TileMap& tileMap);
 
 private:
-    [[nodiscard]] bool collidesWithWall(const TileMap& tileMap) const;
+    bool hasWallInCells(const TileMap& tileMap, int minCol, int minRow, int maxCol, int maxRow) const ;
 };
 
 #endif // GAME_PLAYER_HPP
