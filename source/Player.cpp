@@ -1,5 +1,6 @@
 #include "Player.hpp"
 #include "TileMap.hpp"
+#include <algorithm>
 #include <cmath>
 
 Player::Player() {
@@ -23,18 +24,28 @@ bool Player::hasWallInCells(const TileMap& tileMap, int minCol, int minRow, int 
     return false;
 }
 
-void Player::move(const Vector2D& direction, float dt, const TileMap& tileMap) {
+void Player::move(const Vector2D& direction, float dt, const TileMap& tileMap, bool sprinting) {
     if (!active || dt <= 0.0f) {
         return;
     }
 
-    if (direction.x * direction.x + direction.y * direction.y <= EPSILON) {
+    const bool isMoving = (direction.x * direction.x + direction.y * direction.y > EPSILON);
+    const bool isSprinting = sprinting && isMoving && (stamina > 0.0f);
+
+    if (isSprinting) {
+        stamina = std::max(0.0f, stamina - STAMINA_DRAIN_RATE * dt);
+    } else if (!sprinting || !isMoving) {
+        stamina = std::min(maxStamina, stamina + STAMINA_REGEN_RATE * dt);
+    }
+
+    if (!isMoving) {
         body.velocity = { 0.0f, 0.0f };
         return;
     }
 
+    const float currentSpeed = isSprinting ? (speed * SPRINT_MULTIPLIER) : speed;
     constexpr float SKIN = 0.01f;
-    body.velocity = { direction.x * speed, direction.y * speed };
+    body.velocity = { direction.x * currentSpeed, direction.y * currentSpeed };
 
     bool hitX = false;
     if (body.velocity.x != 0.0f) {

@@ -519,6 +519,34 @@ void Renderer::drawMinimap(const TileMap& tileMap, const Minimap& minimap, const
     m_window.draw(playerDot);
 }
 
+void Renderer::drawHud(const Player& player) {
+    m_window.setView(m_window.getDefaultView());
+
+    auto drawBar = [this](sf::Vector2f pos, sf::Vector2f size, float ratio, sf::Color fillColor) {
+        const float clamped = std::clamp(ratio, 0.0f, 1.0f);
+
+        sf::RectangleShape background(size);
+        background.setPosition(pos);
+        background.setFillColor(sf::Color(25, 25, 25, 200));
+        background.setOutlineThickness(1.5f);
+        background.setOutlineColor(sf::Color(60, 60, 60, 220));
+        m_window.draw(background);
+
+        if (clamped > 0.0f) {
+            sf::RectangleShape fill({ size.x * clamped, size.y });
+            fill.setPosition(pos);
+            fill.setFillColor(fillColor);
+            m_window.draw(fill);
+        }
+    };
+
+    const float hpRatio = (player.maxHp > 0.0f) ? (player.hp / player.maxHp) : 0.0f;
+    const float staminaRatio = (player.maxStamina > 0.0f) ? (player.stamina / player.maxStamina) : 0.0f;
+
+    drawBar({ 20.0f, 20.0f }, { 220.0f, 18.0f }, hpRatio, sf::Color(220, 45, 45));
+    drawBar({ 20.0f, 46.0f }, { 220.0f, 14.0f }, staminaRatio, sf::Color(0, 210, 235));
+}
+
 void Renderer::beginFrame() {
     m_window.clear(sf::Color::Black);
 }

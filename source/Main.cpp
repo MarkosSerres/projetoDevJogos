@@ -29,6 +29,8 @@ void Main::startNewGame() {
     m_tileMap.randomEmptyCell(startCol, startRow);
     m_player.body.position = m_tileMap.toWorld(startCol, startRow);
     m_player.active = true;
+    m_player.hp = m_player.maxHp;
+    m_player.stamina = m_player.maxStamina;
     m_minimap.revealAround(m_tileMap, m_player.body.position);
 
     m_state = AppState::Playing;
@@ -79,7 +81,17 @@ void Main::update(float dt) {
         return;
     }
 
-    m_player.move(checkMovement(), dt, m_tileMap);
+    const bool sprinting = m_renderer.windowHasFocus() &&
+                           (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::LShift) ||
+                            sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RShift));
+
+    m_player.move(checkMovement(), dt, m_tileMap, sprinting);
+    if (m_player.hp <= 0.0f) {
+        m_state = AppState::Menu;
+        m_renderer.getWindow().setView(m_renderer.getWindow().getDefaultView());
+        return;
+    }
+
     m_minimap.revealAround(m_tileMap, m_player.body.position);
     if (m_player.active){
         m_renderer.updateCamera(m_player, m_tileMap);
@@ -121,6 +133,7 @@ void Main::render() {
         m_renderer.drawPlayer(m_player);
         m_renderer.drawDarkness(m_player.body.position, m_player.visionRadius);
         m_renderer.drawMinimap(m_tileMap, m_minimap, m_player.body.position);
+        m_renderer.drawHud(m_player);
     }
 
     m_renderer.endFrame();
