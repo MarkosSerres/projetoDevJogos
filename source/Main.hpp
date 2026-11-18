@@ -3,6 +3,7 @@
 
 #include "Dungeon2D.hpp"
 #include "Global.hpp"
+#include "Minimap.hpp"
 #include "Player.hpp"
 #include "TileMap.hpp"
 #include "Renderer.hpp"
@@ -81,6 +82,7 @@ private:
 
     Dungeon2D m_dungeon;
     TileMap   m_tileMap;
+    Minimap   m_minimap;
     Player    m_player;
     unsigned  m_seed;
     bool      m_running{false};

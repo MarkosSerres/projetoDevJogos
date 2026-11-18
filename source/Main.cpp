@@ -23,11 +23,13 @@ bool Main::init() {
 void Main::startNewGame() {
     m_dungeon.generate(m_seed);
     m_tileMap.loadFromDungeon(m_dungeon);
+    m_minimap.reset(m_tileMap.width(), m_tileMap.height());
 
     int startCol = 0, startRow = 0;
     m_tileMap.randomEmptyCell(startCol, startRow);
     m_player.body.position = m_tileMap.toWorld(startCol, startRow);
     m_player.active = true;
+    m_minimap.revealAround(m_tileMap, m_player.body.position);
 
     m_state = AppState::Playing;
     m_running = true;
@@ -78,6 +80,7 @@ void Main::update(float dt) {
     }
 
     m_player.move(checkMovement(), dt, m_tileMap);
+    m_minimap.revealAround(m_tileMap, m_player.body.position);
     if (m_player.active){
         m_renderer.updateCamera(m_player, m_tileMap);
     }
@@ -117,6 +120,7 @@ void Main::render() {
         m_renderer.drawMap(m_tileMap);
         m_renderer.drawPlayer(m_player);
         m_renderer.drawDarkness(m_player.body.position, m_player.visionRadius);
+        m_renderer.drawMinimap(m_tileMap, m_minimap, m_player.body.position);
     }
 
     m_renderer.endFrame();

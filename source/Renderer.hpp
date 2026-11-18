@@ -6,6 +6,7 @@
 
 #include "TileMap.hpp"
 #include "Menu.hpp"
+#include "Minimap.hpp"
 #include "Player.hpp"
 
 class Renderer{
@@ -26,6 +27,7 @@ public:
     void drawMap(const TileMap& tileMap);
     void drawPlayer(const Player& player);
     void drawDarkness(const Vector2D& lightCenter, float lightRadius);
+    void drawMinimap(const TileMap& tileMap, const Minimap& minimap, const Vector2D& playerPos);
     void drawMenu(const Menu& menu);
 
     void endFrame();

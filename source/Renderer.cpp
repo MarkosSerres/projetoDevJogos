@@ -416,6 +416,109 @@ void Renderer::drawDarkness(const Vector2D& lightCenter, float lightRadius) {
     drawBlackRect(std::max(viewLeft, boxRight), midTop, viewRight, midBottom);
 }
 
+void Renderer::drawMinimap(const TileMap& tileMap, const Minimap& minimap, const Vector2D& playerPos) {
+    if (tileMap.width() <= 0 || tileMap.height() <= 0) {
+        return;
+    }
+
+    constexpr float MINIMAP_RADIUS  = 95.0f;
+    constexpr float MINIMAP_MARGIN  = 20.0f;
+    constexpr float MINIMAP_TILE_PX = 6.0f;
+    constexpr float FADE_INNER_FRAC = 0.55f;
+    constexpr int   CIRCLE_SEGMENTS = 48;
+
+    m_window.setView(m_window.getDefaultView());
+    const sf::Vector2u winSize = m_window.getSize();
+    const sf::Vector2f center{
+        static_cast<float>(winSize.x) - MINIMAP_MARGIN - MINIMAP_RADIUS,
+        MINIMAP_MARGIN + MINIMAP_RADIUS
+    };
+
+    // 1. Soft circular backdrop with no hard outline (fades to transparent at edge).
+    sf::VertexArray backdrop(sf::PrimitiveType::TriangleFan, CIRCLE_SEGMENTS + 2);
+    backdrop[0].position = center;
+    backdrop[0].color    = sf::Color(0, 0, 0, 150);
+
+    constexpr float TWO_PI = 6.28318530718f;
+    for (int i = 0; i <= CIRCLE_SEGMENTS; ++i) {
+        const float angle = (static_cast<float>(i) / static_cast<float>(CIRCLE_SEGMENTS)) * TWO_PI;
+        backdrop[static_cast<std::size_t>(i + 1)].position = {
+            center.x + std::cos(angle) * MINIMAP_RADIUS,
+            center.y + std::sin(angle) * MINIMAP_RADIUS
+        };
+        backdrop[static_cast<std::size_t>(i + 1)].color = sf::Color(0, 0, 0, 0);
+    }
+    m_window.draw(backdrop);
+
+    // 2. White path/wall outlines for explored cells, fading out near the circular edge.
+    auto edgeAlpha = [&](sf::Vector2f pt) -> std::uint8_t {
+        const float dx = pt.x - center.x;
+        const float dy = pt.y - center.y;
+        const float dist = std::sqrt(dx * dx + dy * dy);
+        if (dist >= MINIMAP_RADIUS) {
+            return 0;
+        }
+        const float innerR = MINIMAP_RADIUS * FADE_INNER_FRAC;
+        if (dist <= innerR) {
+            return 255;
+        }
+        const float t = (dist - innerR) / (MINIMAP_RADIUS - innerR);
+        const float fade = 1.0f - (t * t * (3.0f - 2.0f * t));
+        return static_cast<std::uint8_t>(fade * 255.0f + 0.5f);
+    };
+
+    const float playerTileX = playerPos.x / TILE_SIZE;
+    const float playerTileY = playerPos.y / TILE_SIZE;
+    const int tileRange = static_cast<int>(MINIMAP_RADIUS / MINIMAP_TILE_PX) + 2;
+
+    const int minCol = std::max(0, static_cast<int>(std::floor(playerTileX)) - tileRange);
+    const int maxCol = std::min(tileMap.width() - 1, static_cast<int>(std::floor(playerTileX)) + tileRange);
+    const int minRow = std::max(0, static_cast<int>(std::floor(playerTileY)) - tileRange);
+    const int maxRow = std::min(tileMap.height() - 1, static_cast<int>(std::floor(playerTileY)) + tileRange);
+
+    sf::VertexArray lines(sf::PrimitiveType::Lines);
+    auto pushEdge = [&](sf::Vector2f a, sf::Vector2f b) {
+        const std::uint8_t alphaA = edgeAlpha(a);
+        const std::uint8_t alphaB = edgeAlpha(b);
+        if (alphaA == 0 && alphaB == 0) {
+            return;
+        }
+        lines.append(sf::Vertex{ a, sf::Color(255, 255, 255, alphaA) });
+        lines.append(sf::Vertex{ b, sf::Color(255, 255, 255, alphaB) });
+    };
+
+    auto isBlocked = [&](int c, int r) -> bool {
+        return c < 0 || c >= tileMap.width() || r < 0 || r >= tileMap.height() || tileMap.isWall(c, r);
+    };
+
+    for (int row = minRow; row <= maxRow; ++row) {
+        for (int col = minCol; col <= maxCol; ++col) {
+            if (!minimap.isExplored(col, row) || tileMap.isWall(col, row)) {
+                continue;
+            }
+
+            const float left   = center.x + (static_cast<float>(col) - playerTileX) * MINIMAP_TILE_PX;
+            const float right  = left + MINIMAP_TILE_PX;
+            const float top    = center.y + (static_cast<float>(row) - playerTileY) * MINIMAP_TILE_PX;
+            const float bottom = top + MINIMAP_TILE_PX;
+
+            if (isBlocked(col, row - 1)) pushEdge({ left, top }, { right, top });
+            if (isBlocked(col, row + 1)) pushEdge({ left, bottom }, { right, bottom });
+            if (isBlocked(col - 1, row)) pushEdge({ left, top }, { left, bottom });
+            if (isBlocked(col + 1, row)) pushEdge({ right, top }, { right, bottom });
+        }
+    }
+    m_window.draw(lines);
+
+    // 3. Red dot representing the player at the center of the minimap.
+    constexpr float DOT_RADIUS = 3.5f;
+    sf::CircleShape playerDot(DOT_RADIUS);
+    playerDot.setOrigin({ DOT_RADIUS, DOT_RADIUS });
+    playerDot.setPosition(center);
+    playerDot.setFillColor(sf::Color(235, 55, 55));
+    m_window.draw(playerDot);
+}
+
 void Renderer::beginFrame() {
     m_window.clear(sf::Color::Black);
 }
