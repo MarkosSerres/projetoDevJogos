@@ -22,6 +22,67 @@ unsigned tileHash(int col, int row) noexcept {
     return static_cast<unsigned>(col) * 73856093u ^
            static_cast<unsigned>(row) * 19349663u;
 }
+
+bool isSolidCell(const TileMap& tileMap, int col, int row) {
+    if (col < 0 || col >= tileMap.width()) {
+        return false;
+    }
+    if (row < 0 || row >= tileMap.height()) {
+        return true; // Top (-1) and bottom (height) border rows are solid.
+    }
+    return tileMap.isWall(col, row);
+}
+
+bool isRoofCell(const TileMap& tileMap, int col, int row) {
+    if (!isSolidCell(tileMap, col, row)) {
+        return false;
+    }
+    // A solid cell is a roof iff the cell directly below it is also solid.
+    // (Solid cells directly above floor are drawn as front-facing walls.)
+    return isSolidCell(tileMap, col, row + 1);
+}
+
+int selectWallOrRoofTile(const TileMap& tileMap, int col, int row) {
+    if (!isRoofCell(tileMap, col, row)) {
+        // Front-facing wall (tiles 0..3).
+        const bool leftEmpty  = !isSolidCell(tileMap, col - 1, row);
+        const bool rightEmpty = !isSolidCell(tileMap, col + 1, row);
+
+        if (leftEmpty && !rightEmpty) {
+            return 2; // Left corner wall
+        }
+        if (rightEmpty && !leftEmpty) {
+            return 3; // Right corner wall
+        }
+        return (tileHash(col, row) % 4u == 0u) ? 1 : 0; // Base or variation
+    }
+
+    // Roof tile (tiles 4..10) based on bordering non-roof neighbors.
+    const bool borderTop    = !isRoofCell(tileMap, col, row - 1);
+    const bool borderBottom = !isRoofCell(tileMap, col, row + 1);
+    const bool borderLeft   = !isRoofCell(tileMap, col - 1, row);
+    const bool borderRight  = !isRoofCell(tileMap, col + 1, row);
+
+    if (borderTop && borderBottom && borderLeft && borderRight) {
+        return 4; // All sides
+    }
+    if (borderBottom && borderLeft && borderRight) {
+        return 5; // Bottom + left + right
+    }
+    if (borderTop && borderLeft && borderRight) {
+        return 10; // Top + left + right
+    }
+    if (borderLeft && borderRight) {
+        return 6; // Left + right
+    }
+    if (borderRight) {
+        return 7; // Right only
+    }
+    if (borderLeft) {
+        return 9; // Left only
+    }
+    return 8; // No borders
+}
 }
 
 Renderer::Renderer(sf::RenderWindow& win)
@@ -248,34 +309,14 @@ void Renderer::drawMap(const TileMap& tileMap)
     m_window.setView(m_mapView);
     const int tilePx = static_cast<int>(TILE_SIZE);
 
-    for (int row = 0; row < tileMap.height(); ++row) {
+    for (int row = -1; row <= tileMap.height(); ++row) {
         for (int col = 0; col < tileMap.width(); ++col) {
             int tileCol = 0;
             int tileRow = 0;
 
-            if (tileMap.isWall(col, row)) {
+            if (row < 0 || row >= tileMap.height() || tileMap.isWall(col, row)) {
                 tileRow = 0;
-                const bool topEmpty   = (row > 0) && !tileMap.isWall(col, row - 1);
-                const bool leftEmpty  = (col > 0) && !tileMap.isWall(col - 1, row);
-                const bool rightEmpty = (col + 1 < tileMap.width()) && !tileMap.isWall(col + 1, row);
-
-                if (topEmpty) {
-                    if (leftEmpty && !rightEmpty) {
-                        tileCol = 5; // Top left corner with roof
-                    } else if (rightEmpty && !leftEmpty) {
-                        tileCol = 6; // Top right corner with roof
-                    } else {
-                        tileCol = 4; // Top middle with roof
-                    }
-                } else {
-                    if (leftEmpty && !rightEmpty) {
-                        tileCol = 2; // Left corner
-                    } else if (rightEmpty && !leftEmpty) {
-                        tileCol = 3; // Right corner
-                    } else {
-                        tileCol = (tileHash(col, row) % 4u == 0u) ? 1 : 0; // Base or variation
-                    }
-                }
+                tileCol = selectWallOrRoofTile(tileMap, col, row);
             } else {
                 tileRow = 1;
                 tileCol = (tileHash(col, row) % 9u == 0u) ? 1 : 0; // 8 padrão : 1 variante
@@ -355,7 +396,7 @@ void Renderer::drawDarkness(const Vector2D& lightCenter, float lightRadius) {
 }
 
 void Renderer::beginFrame() {
-    m_window.clear(sf::Color(100, 100, 100));
+    m_window.clear(sf::Color::Black);
 }
 
 void Renderer::endFrame() {
