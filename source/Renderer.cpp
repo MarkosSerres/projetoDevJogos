@@ -358,13 +358,68 @@ void Renderer::drawMap(const TileMap& tileMap)
     }
 }
 
-void Renderer::drawPlayer(const Player& player) 
+void Renderer::drawChests(const std::vector<Chest>& chests) {
+    m_window.setView(m_mapView);
+    for (const Chest& chest : chests) {
+        sf::RectangleShape shape({ Chest::WIDTH_PX, Chest::HEIGHT_PX });
+        shape.setPosition({ chest.position.x, chest.position.y });
+        shape.setFillColor(chest.opened ? sf::Color(82, 52, 26) : sf::Color(165, 105, 45));
+        shape.setOutlineThickness(2.0f);
+        shape.setOutlineColor(chest.opened ? sf::Color(55, 32, 14) : sf::Color(215, 175, 75));
+        m_window.draw(shape);
+    }
+}
+
+void Renderer::drawEnemies(const std::vector<Enemy>& enemies) {
+    m_window.setView(m_mapView);
+    for (const Enemy& enemy : enemies) {
+        if (!enemy.active) {
+            continue;
+        }
+        const float radius = std::min(enemy.collision.halfExtents.x, enemy.collision.halfExtents.y);
+        sf::CircleShape shape(radius);
+        shape.setOrigin({ radius, radius });
+        shape.setPosition({ enemy.body.position.x, enemy.body.position.y });
+        shape.setFillColor(sf::Color(185, 35, 35));
+        shape.setOutlineThickness(2.0f);
+        shape.setOutlineColor(sf::Color(60, 10, 10));
+        m_window.draw(shape);
+    }
+}
+
+void Renderer::drawPlayer(const Player& player, bool showInteractPrompt)
 {
     if (!player.active) {
         return;
     }
     m_playerSprite.setPosition({ player.body.position.x, player.body.position.y });
     m_window.draw(m_playerSprite);
+
+    if (showInteractPrompt) {
+        constexpr float BADGE_SIZE = 24.0f;
+        const sf::Vector2f badgePos{
+            player.body.position.x,
+            player.body.position.y - TILE_SIZE * 0.85f
+        };
+
+        sf::RectangleShape badge({ BADGE_SIZE, BADGE_SIZE });
+        badge.setOrigin({ BADGE_SIZE * 0.5f, BADGE_SIZE * 0.5f });
+        badge.setPosition(badgePos);
+        badge.setFillColor(sf::Color(25, 25, 25, 220));
+        badge.setOutlineThickness(1.5f);
+        badge.setOutlineColor(sf::Color(235, 200, 70));
+        m_window.draw(badge);
+
+        sf::Text keyText(m_font, "E", 16);
+        keyText.setFillColor(sf::Color::White);
+        const sf::FloatRect tb = keyText.getLocalBounds();
+        keyText.setOrigin({
+            tb.position.x + tb.size.x * 0.5f,
+            tb.position.y + tb.size.y * 0.5f
+        });
+        keyText.setPosition(badgePos);
+        m_window.draw(keyText);
+    }
 }
 
 void Renderer::drawDarkness(const Vector2D& lightCenter, float lightRadius) {
@@ -540,11 +595,13 @@ void Renderer::drawHud(const Player& player) {
         }
     };
 
+    constexpr float BASE_BAR_WIDTH = 220.0f;
     const float hpRatio = (player.maxHp > 0.0f) ? (player.hp / player.maxHp) : 0.0f;
     const float staminaRatio = (player.maxStamina > 0.0f) ? (player.stamina / player.maxStamina) : 0.0f;
+    const float staminaBarWidth = BASE_BAR_WIDTH * (player.maxStamina / Player::INITIAL_STAMINA);
 
-    drawBar({ 20.0f, 20.0f }, { 220.0f, 18.0f }, hpRatio, sf::Color(220, 45, 45));
-    drawBar({ 20.0f, 46.0f }, { 220.0f, 14.0f }, staminaRatio, sf::Color(0, 210, 235));
+    drawBar({ 20.0f, 20.0f }, { BASE_BAR_WIDTH, 18.0f }, hpRatio, sf::Color(220, 45, 45));
+    drawBar({ 20.0f, 46.0f }, { staminaBarWidth, 14.0f }, staminaRatio, sf::Color(0, 210, 235));
 }
 
 void Renderer::beginFrame() {

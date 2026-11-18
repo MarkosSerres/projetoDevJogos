@@ -1,7 +1,10 @@
 #ifndef GAME_MAIN_HPP
 #define GAME_MAIN_HPP
 
+#include <vector>
+#include "Chest.hpp"
 #include "Dungeon2D.hpp"
+#include "Enemy.hpp"
 #include "Global.hpp"
 #include "Minimap.hpp"
 #include "Player.hpp"
@@ -78,12 +81,18 @@ public:
 
 private:
     void startNewGame();
+    void spawnChests(int count);
+    void interactWithChest();
+    [[nodiscard]] std::size_t findNearestUnopenedChest() const;
     Vector2D checkMovement() const;
 
-    Dungeon2D m_dungeon;
-    TileMap   m_tileMap;
-    Minimap   m_minimap;
-    Player    m_player;
+    Dungeon2D          m_dungeon;
+    TileMap            m_tileMap;
+    Minimap            m_minimap;
+    Player             m_player;
+    std::vector<Chest> m_chests;
+    std::vector<Enemy> m_enemies;
+    EntityId           m_nextEnemyId{INITIAL_ENTITY_ID};
     unsigned  m_seed;
     bool      m_running{false};
     Renderer  m_renderer;

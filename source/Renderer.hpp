@@ -2,8 +2,11 @@
 #define GAME_RENDERER_HPP
 
 #include <array>
+#include <vector>
 #include <SFML/Graphics.hpp>
 
+#include "Chest.hpp"
+#include "Enemy.hpp"
 #include "TileMap.hpp"
 #include "Menu.hpp"
 #include "Minimap.hpp"
@@ -25,7 +28,9 @@ public:
     void beginFrame();
 
     void drawMap(const TileMap& tileMap);
-    void drawPlayer(const Player& player);
+    void drawChests(const std::vector<Chest>& chests);
+    void drawEnemies(const std::vector<Enemy>& enemies);
+    void drawPlayer(const Player& player, bool showInteractPrompt = false);
     void drawDarkness(const Vector2D& lightCenter, float lightRadius);
     void drawMinimap(const TileMap& tileMap, const Minimap& minimap, const Vector2D& playerPos);
     void drawHud(const Player& player);
