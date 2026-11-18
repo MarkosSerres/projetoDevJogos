@@ -58,6 +58,7 @@ constexpr int FRAME_RATE = 60;
 
 constexpr const char* FLOOR_TEX       = "floor.png";
 constexpr const char* WALL_TEX        = "TileSet.png";
+constexpr const char* PLAYER_TEX      = "player.png";
 constexpr const char* PLAY_BTN_TEX    = "playButton.png";
 constexpr const char* OPTIONS_BTN_TEX = "optionsButton.png";
 constexpr const char* CREDITS_BTN_TEX = "creditsButton.png";

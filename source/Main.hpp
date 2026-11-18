@@ -78,6 +78,7 @@ public:
 private:
     void startNewGame();
     void handleMenuClick(const sf::Vector2i& pixelPos);
+    Vector2D checkMovement() const;
 
     Dungeon2D m_dungeon;
     TileMap   m_tileMap;

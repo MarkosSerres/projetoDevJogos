@@ -25,7 +25,7 @@ unsigned tileHash(int col, int row) noexcept {
 }
 
 Renderer::Renderer(sf::RenderWindow& win)
-    : m_window(win), m_tileSprite(m_floorTex) {
+    : m_window(win), m_tileSprite(m_floorTex), m_playerSprite(m_playerTex){
     m_window.setFramerateLimit(FRAME_RATE);
 }
 
@@ -33,19 +33,23 @@ bool Renderer::loadResources() {
     using Option = MainOption;
 
     const bool loaded =
-        m_floorTex.loadFromFile(FLOOR_TEX) &&
-        m_wallTex.loadFromFile(WALL_TEX) &&
-        m_mainBtnTex[static_cast<std::size_t>(Option::Play)].loadFromFile(PLAY_BTN_TEX) &&
-        m_mainBtnTex[static_cast<std::size_t>(Option::Options)].loadFromFile(OPTIONS_BTN_TEX) &&
-        m_mainBtnTex[static_cast<std::size_t>(Option::Credits)].loadFromFile(CREDITS_BTN_TEX) &&
-        m_mainBtnTex[static_cast<std::size_t>(Option::Exit)].loadFromFile(EXIT_BTN_TEX) &&
-        m_backBtnTex.loadFromFile(BACK_BTN_TEX) &&
-        m_font.openFromFile(MENU_FONT);
+                        m_floorTex.loadFromFile(FLOOR_TEX) &&
+                        m_wallTex.loadFromFile(WALL_TEX) &&
+                        m_playerTex.loadFromFile(PLAYER_TEX) &&
+                        m_mainBtnTex[static_cast<std::size_t>(Option::Play)].loadFromFile(PLAY_BTN_TEX) &&
+                        m_mainBtnTex[static_cast<std::size_t>(Option::Options)].loadFromFile(OPTIONS_BTN_TEX) &&
+                        m_mainBtnTex[static_cast<std::size_t>(Option::Credits)].loadFromFile(CREDITS_BTN_TEX) &&
+                        m_mainBtnTex[static_cast<std::size_t>(Option::Exit)].loadFromFile(EXIT_BTN_TEX) &&
+                        m_backBtnTex.loadFromFile(BACK_BTN_TEX) &&
+                        m_font.openFromFile(MENU_FONT);
 
     if (!loaded) {
         return false;
     }
-
+    m_playerSprite.setTexture(m_playerTex, true);
+    const sf::FloatRect bounds = m_playerSprite.getLocalBounds();
+    m_playerSprite.setOrigin({ bounds.size.x * 0.5f, bounds.size.y * 0.5f });
+    
     // Build a 256x256 radial alpha mask: transparent center -> solid black edge.
     constexpr unsigned TEX_SIZE = 256;
     sf::Image darknessImg({ TEX_SIZE, TEX_SIZE }, sf::Color::Black);
@@ -159,10 +163,6 @@ void Renderer::setupMapView(float zoomFactor) {
         static_cast<float>(windowSize.x) / zoomFactor,
         static_cast<float>(windowSize.y) / zoomFactor
     });
-    m_mapView.setCenter({
-        (MAP_WIDTH * TILE_SIZE) * 0.5f,
-        (MAP_HEIGHT * TILE_SIZE) * 0.5f
-    });
     m_window.setView(m_mapView);
 }
 
@@ -243,7 +243,8 @@ sf::RenderWindow& Renderer::getWindow() {
     return m_window;
 }
 
-void Renderer::drawMap(const TileMap& tileMap) {
+void Renderer::drawMap(const TileMap& tileMap) 
+{
     m_window.setView(m_mapView);
     const int tilePx = static_cast<int>(TILE_SIZE);
 
@@ -295,19 +296,13 @@ void Renderer::drawMap(const TileMap& tileMap) {
     }
 }
 
-void Renderer::drawPlayer(const Player& player) {
+void Renderer::drawPlayer(const Player& player) 
+{
     if (!player.active) {
         return;
     }
-
-    const float radius = std::min(player.collision.halfExtents.x, player.collision.halfExtents.y);
-    sf::CircleShape bodyShape(radius);
-    bodyShape.setOrigin({ radius, radius });
-    bodyShape.setPosition({ player.body.position.x, player.body.position.y });
-    bodyShape.setFillColor(sf::Color(235, 200, 70));
-    bodyShape.setOutlineThickness(2.0f);
-    bodyShape.setOutlineColor(sf::Color(40, 30, 15));
-    m_window.draw(bodyShape);
+    m_playerSprite.setPosition({ player.body.position.x, player.body.position.y });
+    m_window.draw(m_playerSprite);
 }
 
 void Renderer::drawDarkness(const Vector2D& lightCenter, float lightRadius) {
@@ -365,4 +360,8 @@ void Renderer::beginFrame() {
 
 void Renderer::endFrame() {
     m_window.display();
+}
+
+const bool Renderer::windowHasFocus() const { 
+    return m_window.hasFocus(); 
 }

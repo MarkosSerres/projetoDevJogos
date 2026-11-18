@@ -72,26 +72,31 @@ void Main::update(float dt) {
         return;
     }
 
-    Vector2D moveDir{ 0.0f, 0.0f };
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) ||
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)) {
-        moveDir.y -= 1.0f;
+    m_player.move(checkMovement(), dt, m_tileMap);
+    if (m_player.active){
+        m_renderer.updateCamera(m_player.body.position);
     }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S) ||
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down)) {
-        moveDir.y += 1.0f;
-    }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A) ||
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) {
-        moveDir.x -= 1.0f;
-    }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D) ||
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)) {
-        moveDir.x += 1.0f;
-    }
+}
 
-    m_player.move(moveDir, dt, m_tileMap);
-    m_renderer.updateCamera(m_player.body.position);
+ Vector2D Main::checkMovement() const{
+    if(!m_renderer.windowHasFocus())
+        return {0.0f,0.0f};
+    
+    Vector2D moveDir{0.0f, 0.0f};
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up))
+        moveDir.y -= 1.0f;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S) || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down))
+        moveDir.y += 1.0f;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A) || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))
+        moveDir.x -= 1.0f;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D) || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
+        moveDir.x += 1.0f;
+
+    if(moveDir.x != 0.f || moveDir.y != 0.f)
+        moveDir = moveDir.normalized();
+
+    return moveDir;
 }
 
 void Main::render() {
