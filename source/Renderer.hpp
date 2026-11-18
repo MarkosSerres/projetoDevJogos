@@ -8,14 +8,13 @@
 #include "Menu.hpp"
 #include "Player.hpp"
 
-
 class Renderer{
 public:
     explicit Renderer(sf::RenderWindow& win);
 
     bool loadResources();
     void setupMapView(float zoomFactor = 1.0f);
-    void updateCamera(const Vector2D& targetPos);
+    void updateCamera(const Player& player, const TileMap& tileMap);
 
     sf::RenderWindow& getWindow();
     sf::FloatRect getMenuButtonBounds(const Menu& menu, std::size_t index) const;

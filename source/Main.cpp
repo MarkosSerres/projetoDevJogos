@@ -14,6 +14,7 @@ bool Main::init() {
     if (!m_renderer.loadResources()) {
         return false;
     }
+    m_renderer.setupMapView(0.9);
     m_state = AppState::Menu;
     m_running = true;
     return true;
@@ -28,8 +29,6 @@ void Main::startNewGame() {
     m_player.body.position = m_tileMap.toWorld(startCol, startRow);
     m_player.active = true;
 
-    m_renderer.setupMapView(1.0f);
-    m_renderer.updateCamera(m_player.body.position);
     m_state = AppState::Playing;
     m_running = true;
 }
@@ -48,8 +47,14 @@ int Main::run() {
                 m_renderer.getWindow().close();
             } else if (m_state == AppState::Menu) {
                 if (const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>()) {
-                    if (mouse->button == sf::Mouse::Button::Left) {
-                        handleMenuClick(mouse->position);
+                    if (mouse->button == sf::Mouse::Button::Left) 
+                    {
+                        const MenuAction action = m_menu.handleMenuClick(mouse->position, m_renderer);
+                        if (action == MenuAction::StartGame) {
+                            startNewGame();
+                        } else if (action == MenuAction::ExitGame) {
+                            m_renderer.getWindow().close();
+                        }
                     }
                 }
             }
@@ -74,7 +79,7 @@ void Main::update(float dt) {
 
     m_player.move(checkMovement(), dt, m_tileMap);
     if (m_player.active){
-        m_renderer.updateCamera(m_player.body.position);
+        m_renderer.updateCamera(m_player, m_tileMap);
     }
 }
 
@@ -117,46 +122,6 @@ void Main::render() {
     m_renderer.endFrame();
 }
 
-void Main::handleMenuClick(const sf::Vector2i& pixelPos) {
-    const sf::Vector2f worldPos = m_renderer.getWindow().mapPixelToCoords(
-        pixelPos, m_renderer.getWindow().getDefaultView()
-    );
-
-    const std::size_t count = m_menu.itemCount();
-    for (std::size_t i = 0; i < count; ++i) {
-        const sf::FloatRect bounds = m_renderer.getMenuButtonBounds(m_menu, i);
-        if (!bounds.contains(worldPos)) {
-            continue;
-        }
-
-        if (m_menu.currentScreen() == MenuScreen::Options &&
-            i == static_cast<std::size_t>(OptionsItem::MasterVolume)) {
-            const float relativePosition = std::clamp(
-                (worldPos.x - bounds.position.x) / bounds.size.x,
-                0.0f,
-                1.0f
-            );
-            m_menu.setVolume(static_cast<int>(relativePosition * 100.0f + 0.5f));
-            break;
-        }
-
-        const MenuAction action = m_menu.click(i);
-
-        switch (action) {
-            case MenuAction::StartGame:
-                startNewGame();
-                break;
-            case MenuAction::ExitGame:
-                m_renderer.getWindow().close();
-                break;
-            default:
-                break;
-        }
-
-        break;
-    }
-}
-
 void Main::shutdown() noexcept {
     m_running = false;
 }
@@ -174,7 +139,7 @@ const Player& Main::player() const noexcept {
 }
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode({1200, 900}), "Joguinho");
+    sf::RenderWindow window(sf::VideoMode({1100, 800}), "Joguinho");
     Main app(window);
 
     return app.run();

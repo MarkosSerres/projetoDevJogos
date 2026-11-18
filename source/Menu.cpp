@@ -1,6 +1,30 @@
 #include "Menu.hpp"
-
+#include "Renderer.hpp"
 #include <algorithm>
+
+MenuAction Menu::handleMenuClick(const sf::Vector2i& pixelPos, Renderer& renderer) 
+{
+    const sf::Vector2f worldPos = renderer.getWindow().mapPixelToCoords(pixelPos, renderer.getWindow().getDefaultView());
+
+    const std::size_t count = itemCount();
+    for (std::size_t i = 0; i < count; ++i) {
+        const sf::FloatRect bounds = renderer.getMenuButtonBounds(*this, i);
+        if (!bounds.contains(worldPos)) {
+            continue;
+        }
+
+        if (currentScreen() == MenuScreen::Options && i == static_cast<std::size_t>(OptionsItem::MasterVolume)) {
+            const float relativePosition = std::clamp((worldPos.x - bounds.position.x) / bounds.size.x, 0.0f, 1.0f);
+            setVolume(static_cast<int>(relativePosition * 100.0f + 0.5f));
+            return MenuAction::None;
+        }
+
+        return click(i);
+    }
+
+    return MenuAction::None;
+}
+
 
 MenuAction Menu::click(std::size_t index) noexcept {
     if (index >= itemCount()) {

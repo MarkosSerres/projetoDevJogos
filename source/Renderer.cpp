@@ -159,8 +159,29 @@ void Renderer::setupMapView(float zoomFactor) {
     m_window.setView(m_mapView);
 }
 
-void Renderer::updateCamera(const Vector2D& targetPos) {
-    m_mapView.setCenter({ targetPos.x, targetPos.y });
+void Renderer::updateCamera(const Player& player, const TileMap& tileMap) {
+    float mapWidth  = static_cast<float>(tileMap.width())  * TILE_SIZE;
+    float mapHeight = static_cast<float>(tileMap.height()) * TILE_SIZE;
+
+    sf::Vector2f viewSize = m_mapView.getSize();
+    float halfW = viewSize.x * 0.5f;
+    float halfH = viewSize.y * 0.5f;
+
+    float camX = player.body.position.x + TILE_SIZE * 0.5f;
+    float camY = player.body.position.y + TILE_SIZE * 0.5f;
+
+    if(mapWidth > viewSize.x)
+        camX = std::clamp(camX, halfW, mapWidth - halfW);
+    else
+        camX = mapWidth * 0.5f;
+
+    
+    if(mapHeight > viewSize.y)
+        camY = std::clamp(camY, halfH, mapHeight - halfH);
+    else
+        camY = mapHeight * 0.5f;
+
+    m_mapView.setCenter({ camX, camY });
     m_window.setView(m_mapView);
 }
 
