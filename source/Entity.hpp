@@ -2,7 +2,6 @@
 #define GAME_ENTITY_HPP
 
 #include "Global.hpp"
-#include "Vector2D.hpp"
 #include "RigidBody2D.hpp"
 #include "Collision2D.hpp"
 
@@ -17,7 +16,6 @@
 struct Entity {
     RigidBody2D body;        ///< Motion state (position, velocity, acceleration).
     Collision2D collision;   ///< Collision shape (half-extents).
-
     /// While false, the entity is ignored by simulation and collision passes.
     bool active{true};
 

@@ -2,8 +2,8 @@
 #define GAME_PLAYER_HPP
 
 #include "Entity.hpp"
-#include "Global.hpp"
 #include "Vector2D.hpp"
+
 
 class TileMap;
 
@@ -16,11 +16,14 @@ class TileMap;
  * slides smoothly along walls without clipping into solid tiles.
  */
 struct Player : Entity {
-    static constexpr float DEFAULT_SPEED         = 220.0f;
-    static constexpr float DEFAULT_VISION_RADIUS = 240.0f;
+    static constexpr float DEFAULT_SPEED         = 350.0f;
+    static constexpr float DEFAULT_VISION_RADIUS = 500.0f;
+    static constexpr float INITIAL_HP            = 100.0F;
+    static constexpr float WALL_SLIDE_FACTOR     = 0.65f;
 
     float speed{DEFAULT_SPEED};                ///< Movement speed in pixels per second.
     float visionRadius{DEFAULT_VISION_RADIUS}; ///< Light radius around the player in pixels.
+    float hp{INITIAL_HP};
 
     Player();
 
