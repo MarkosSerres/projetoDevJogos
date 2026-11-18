@@ -55,13 +55,31 @@ int Main::run() {
         while (const std::optional event = m_renderer.getWindow().pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
                 m_renderer.getWindow().close();
-            } else if (m_state == AppState::Menu) {
+            } else if (m_state == AppState::Menu || m_state == AppState::Paused) {
+                if (m_state == AppState::Paused) {
+                    if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
+                        if (key->code == sf::Keyboard::Key::Escape) {
+                            if (m_menu.currentScreen() == MenuScreen::PauseOptions) {
+                                m_menu.openPause();
+                            } else {
+                                m_state = AppState::Playing;
+                            }
+                            continue;
+                        }
+                    }
+                }
                 if (const auto* mouse = event->getIf<sf::Event::MouseButtonPressed>()) {
                     if (mouse->button == sf::Mouse::Button::Left) 
                     {
                         const MenuAction action = m_menu.handleMenuClick(mouse->position, m_renderer);
                         if (action == MenuAction::StartGame) {
                             startNewGame();
+                        } else if (action == MenuAction::ResumeGame) {
+                            m_state = AppState::Playing;
+                        } else if (action == MenuAction::ReturnToMenu) {
+                            m_state = AppState::Menu;
+                            m_menu.openMain();
+                            m_renderer.getWindow().setView(m_renderer.getWindow().getDefaultView());
                         } else if (action == MenuAction::ExitGame) {
                             m_renderer.getWindow().close();
                         }
@@ -71,6 +89,9 @@ int Main::run() {
                 if (const auto* key = event->getIf<sf::Event::KeyPressed>()) {
                     if (key->code == sf::Keyboard::Key::E) {
                         interactWithChest();
+                    } else if (key->code == sf::Keyboard::Key::Escape) {
+                        m_state = AppState::Paused;
+                        m_menu.openPause();
                     }
                 }
             }
@@ -153,6 +174,10 @@ void Main::render() {
         m_renderer.drawDarkness(m_player.body.position, m_player.visionRadius);
         m_renderer.drawMinimap(m_tileMap, m_minimap, m_player.body.position);
         m_renderer.drawHud(m_player);
+
+        if (m_state == AppState::Paused) {
+            m_renderer.drawMenu(m_menu);
+        }
     }
 
     m_renderer.endFrame();

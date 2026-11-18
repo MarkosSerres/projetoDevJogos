@@ -15,6 +15,8 @@ constexpr float OPTIONS_BAR_Y = 335.0f;
 constexpr float OPTIONS_BAR_WIDTH = 360.0f;
 constexpr float OPTIONS_BAR_HEIGHT = 28.0f;
 constexpr float OPTIONS_BACK_Y = 500.0f;
+constexpr float PAUSE_BTN_W = 280.0f;
+constexpr float PAUSE_BTN_H = 54.0f;
 constexpr int   WALL_TILE_SPACING = 1;
 constexpr int   WALL_TILE_STRIDE  = static_cast<int>(TILE_SIZE) + WALL_TILE_SPACING;
 
@@ -147,7 +149,8 @@ const sf::Texture& Renderer::menuButtonTexture(const Menu& menu, std::size_t ind
 sf::Vector2f Renderer::menuButtonPosition(const Menu& menu, std::size_t index) const {
     const float centerX = static_cast<float>(m_window.getSize().x) * 0.5f;
 
-    if (menu.currentScreen() == MenuScreen::Options) {
+    if (menu.currentScreen() == MenuScreen::Options ||
+        menu.currentScreen() == MenuScreen::PauseOptions) {
         return { centerX, OPTIONS_BACK_Y };
     }
 
@@ -172,9 +175,18 @@ sf::FloatRect Renderer::volumeControlBounds() const {
 }
 
 sf::FloatRect Renderer::getMenuButtonBounds(const Menu& menu, std::size_t index) const {
-    if (menu.currentScreen() == MenuScreen::Options &&
+    if ((menu.currentScreen() == MenuScreen::Options ||
+         menu.currentScreen() == MenuScreen::PauseOptions) &&
         index == static_cast<std::size_t>(OptionsItem::MasterVolume)) {
         return volumeControlBounds();
+    }
+
+    if (menu.currentScreen() == MenuScreen::Pause) {
+        const sf::Vector2f pos = menuButtonPosition(menu, index);
+        return {
+            { pos.x - PAUSE_BTN_W * 0.5f, pos.y - PAUSE_BTN_H * 0.5f },
+            { PAUSE_BTN_W, PAUSE_BTN_H }
+        };
     }
 
     const sf::Texture& texture = menuButtonTexture(menu, index);
@@ -256,9 +268,24 @@ void Renderer::updateCamera(const Player& player, const TileMap& tileMap) {
 void Renderer::drawMenu(const Menu& menu) {
     m_window.setView(m_window.getDefaultView());
 
+    if (menu.currentScreen() == MenuScreen::Pause ||
+        menu.currentScreen() == MenuScreen::PauseOptions) {
+        const sf::Vector2u winSize = m_window.getSize();
+        sf::RectangleShape overlay({
+            static_cast<float>(winSize.x),
+            static_cast<float>(winSize.y)
+        });
+        overlay.setFillColor(sf::Color(0, 0, 0, 175));
+        m_window.draw(overlay);
+    }
+
     const float centerX = static_cast<float>(m_window.getSize().x) * 0.5f;
 
-    sf::Text title(m_font, "Little Game", 48);
+    const char* titleStr = (menu.currentScreen() == MenuScreen::Pause ||
+                            menu.currentScreen() == MenuScreen::PauseOptions)
+                               ? "Pause"
+                               : "Little Game";
+    sf::Text title(m_font, titleStr, 48);
     title.setFillColor(sf::Color::White);
     const sf::FloatRect titleBounds = title.getLocalBounds();
     title.setOrigin({
@@ -268,7 +295,33 @@ void Renderer::drawMenu(const Menu& menu) {
     title.setPosition({ centerX, MENU_TITLE_Y });
     m_window.draw(title);
 
-    if (menu.currentScreen() == MenuScreen::Options) {
+    if (menu.currentScreen() == MenuScreen::Pause) {
+        const char* labels[] = { "Voltar ao Jogo", "Configuracoes", "Voltar ao Menu" };
+        for (std::size_t i = 0; i < menu.itemCount(); ++i) {
+            const sf::Vector2f pos = menuButtonPosition(menu, i);
+            sf::RectangleShape box({ PAUSE_BTN_W, PAUSE_BTN_H });
+            box.setOrigin({ PAUSE_BTN_W * 0.5f, PAUSE_BTN_H * 0.5f });
+            box.setPosition(pos);
+            box.setFillColor(sf::Color(35, 35, 42, 235));
+            box.setOutlineThickness(2.0f);
+            box.setOutlineColor(sf::Color(200, 170, 75));
+            m_window.draw(box);
+
+            sf::Text txt(m_font, labels[i], 24);
+            txt.setFillColor(sf::Color::White);
+            const sf::FloatRect tb = txt.getLocalBounds();
+            txt.setOrigin({
+                tb.position.x + tb.size.x * 0.5f,
+                tb.position.y + tb.size.y * 0.5f
+            });
+            txt.setPosition(pos);
+            m_window.draw(txt);
+        }
+        return;
+    }
+
+    if (menu.currentScreen() == MenuScreen::Options ||
+        menu.currentScreen() == MenuScreen::PauseOptions) {
         sf::Text label(m_font, "Game Volume", 30);
         label.setFillColor(sf::Color::White);
         const sf::FloatRect labelBounds = label.getLocalBounds();

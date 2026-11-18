@@ -27,7 +27,8 @@
 
 enum class AppState {
     Menu,
-    Playing
+    Playing,
+    Paused
 };
 
 class Main {

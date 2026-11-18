@@ -9,7 +9,9 @@
 enum class MenuScreen {
     Main,
     Options,
-    Credits
+    Credits,
+    Pause,
+    PauseOptions
 };
 
 enum class MainOption {
@@ -17,6 +19,13 @@ enum class MainOption {
     Options,
     Credits,
     Exit,
+    Count
+};
+
+enum class PauseOption {
+    Resume = 0,
+    Options,
+    MainMenu,
     Count
 };
 
@@ -29,6 +38,8 @@ enum class OptionsItem {
 enum class MenuAction {
     None,
     StartGame,
+    ResumeGame,
+    ReturnToMenu,
     ExitGame
 };
 
@@ -45,6 +56,8 @@ public:
     MenuAction handleMenuClick(const sf::Vector2i& pixelPos, Renderer& renderer) ;
     [[nodiscard]] MenuAction click(std::size_t index) noexcept;
     void setVolume(int volume) noexcept;
+    void openPause() noexcept;
+    void openMain() noexcept;
 
     [[nodiscard]] MenuScreen currentScreen() const noexcept;
     [[nodiscard]] std::size_t itemCount() const noexcept;
