@@ -15,6 +15,13 @@ constexpr float OPTIONS_BAR_Y = 335.0f;
 constexpr float OPTIONS_BAR_WIDTH = 360.0f;
 constexpr float OPTIONS_BAR_HEIGHT = 28.0f;
 constexpr float OPTIONS_BACK_Y = 500.0f;
+constexpr int   WALL_TILE_SPACING = 1;
+constexpr int   WALL_TILE_STRIDE  = static_cast<int>(TILE_SIZE) + WALL_TILE_SPACING;
+
+unsigned tileHash(int col, int row) noexcept {
+    return static_cast<unsigned>(col) * 73856093u ^
+           static_cast<unsigned>(row) * 19349663u;
+}
 }
 
 Renderer::Renderer(sf::RenderWindow& win)
@@ -260,9 +267,47 @@ sf::RenderWindow& Renderer::getWindow() {
 void Renderer::drawMap(const TileMap& tileMap) 
 {
     m_window.setView(m_mapView);
+    const int tilePx = static_cast<int>(TILE_SIZE);
+
     for (int row = 0; row < tileMap.height(); ++row) {
         for (int col = 0; col < tileMap.width(); ++col) {
-            m_tileSprite.setTexture(tileMap.isWall(col, row) ? m_wallTex : m_floorTex, true);
+            int tileCol = 0;
+            int tileRow = 0;
+
+            if (tileMap.isWall(col, row)) {
+                tileRow = 0;
+                const bool topEmpty   = (row > 0) && !tileMap.isWall(col, row - 1);
+                const bool leftEmpty  = (col > 0) && !tileMap.isWall(col - 1, row);
+                const bool rightEmpty = (col + 1 < tileMap.width()) && !tileMap.isWall(col + 1, row);
+
+                if (topEmpty) {
+                    if (leftEmpty && !rightEmpty) {
+                        tileCol = 5; // Top left corner with roof
+                    } else if (rightEmpty && !leftEmpty) {
+                        tileCol = 6; // Top right corner with roof
+                    } else {
+                        tileCol = 4; // Top middle with roof
+                    }
+                } else {
+                    if (leftEmpty && !rightEmpty) {
+                        tileCol = 2; // Left corner
+                    } else if (rightEmpty && !leftEmpty) {
+                        tileCol = 3; // Right corner
+                    } else {
+                        tileCol = (tileHash(col, row) % 4u == 0u) ? 1 : 0; // Base or variation
+                    }
+                }
+            } else {
+                tileRow = 1;
+                tileCol = (tileHash(col, row) % 9u == 0u) ? 1 : 0; // 8 padrão : 1 variante
+            }
+
+            m_tileSprite.setTexture(m_wallTex);
+            m_tileSprite.setTextureRect(sf::IntRect(
+                { tileCol * WALL_TILE_STRIDE, tileRow * WALL_TILE_STRIDE },
+                { tilePx, tilePx }
+            ));
+
             m_tileSprite.setPosition({
                 static_cast<float>(col) * TILE_SIZE,
                 static_cast<float>(row) * TILE_SIZE
